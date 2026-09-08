@@ -286,16 +286,8 @@ export default function PecelPanel({
         <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-900/60 space-y-6">
           {activeTab === 'data' ? (
             <>
-              {/* Reassurance Notice */}
-              <div className="p-3.5 rounded-xl bg-teal-950/40 border border-teal-500/25 flex items-start gap-3 text-xs text-teal-200">
-            <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-teal-300">Konfirmasi Pemasukan Pecel:</span>
-              <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
-                Ketika Anda menekan <strong>Konfirmasi Pemasukan</strong> pada salah satu unit di bawah ini, nilai pemasukan akan <strong>otomatis terisi</strong> di Dashboard Motor Pecel pada Halaman DRU. (Catatan: tarif jasa parkir dirahasiakan oleh sistem DRU).
-              </p>
-            </div>
-          </div>
+
+
 
           {/* Metric Cards Pecel */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
