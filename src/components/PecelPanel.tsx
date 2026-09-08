@@ -783,10 +783,9 @@ export default function PecelPanel({
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
-                    min={0}
-                    step={10000}
-                    required
+                    type="text"
+                    inputMode="numeric"
+
                     readOnly={!!(selectedRecordForConfirm.statusKirimPecel === 'terkirim' && selectedRecordForConfirm.nominalKirimPecel)}
                     value={inputPemasukanAmount}
                     onChange={(e) => {
