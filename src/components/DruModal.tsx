@@ -1789,14 +1789,13 @@ export default function DruModal({
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
-                    min={1000}
-                    step={10000}
-                    required
+                    type="text"
+                    inputMode="numeric"
                     autoFocus
                     placeholder="Contoh: 500000"
                     value={sendPemasukanAmount || ''}
-                    onChange={(e) => setSendPemasukanAmount(Number(e.target.value))}
+                    onChange={(e) => setSendPemasukanAmount(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+
                     className="w-full px-3.5 py-2.5 bg-slate-950 border border-teal-500/50 rounded-xl text-teal-300 font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                   />
                 </div>
