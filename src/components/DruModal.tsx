@@ -387,6 +387,22 @@ export default function DruModal({
 
     const jasaParkirNum = formJasaParkir !== '' && !isNaN(Number(formJasaParkir)) ? Number(formJasaParkir) : 0;
 
+    if (jasaParkirNum < 15000) {
+      setFormError('Jasa Parkir minimal Rp 15.000.');
+      return;
+    }
+    if (jasaParkirNum % 1000 !== 0) {
+      setFormError('Jasa Parkir harus kelipatan Rp 1.000 (contoh: 15.000, 16.000, 20.000).');
+      return;
+    }
+
+    const nominalPokokNum = formNominal !== '' && !isNaN(Number(formNominal)) ? Number(formNominal) : 0;
+
+    if (!editingId && nominalPokokNum <= 0) {
+      setFormError('Nominal Pokok harus diisi untuk pendaftaran motor baru.');
+      return;
+    }
+
     const currentRecord = editingId ? motorData.find((m) => m.id === editingId) : null;
     const payload = {
       tanggal: formTanggal,
@@ -394,7 +410,7 @@ export default function DruModal({
       motor: formMotor.trim(),
       tahun: Number(formTahun) || formTahun,
       nopol: formNopol.trim().toUpperCase(),
-      nominal: editingId ? (currentRecord?.nominal || 0) : 0,
+      nominal: editingId ? (currentRecord?.nominal || 0) : nominalPokokNum,
       pemasukan: editingId ? (currentRecord?.pemasukan || 0) : 0,
       jasaParkir: jasaParkirNum,
       tarifJasa: jasaParkirNum,
@@ -1187,7 +1203,33 @@ export default function DruModal({
                     />
                   </div>
 
-                  {/* 5. Jasa Parkir */}
+                  {/* 5. Nominal Pokok (hanya saat pendaftaran motor baru) */}
+                  {!editingId && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Nominal Pokok (Rp):</span>
+                        </div>
+                        <span className="text-[11px] text-emerald-400 font-mono font-bold">
+                          {formNominal !== '' && !isNaN(Number(formNominal)) ? formatRupiah(Number(formNominal)) : ''}
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Contoh: 3000000"
+                        value={formNominal}
+                        onChange={(e) => setFormNominal(e.target.value.replace(/[^0-9]/g, ''))}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-emerald-400 rounded-xl text-slate-100 text-xs focus:outline-none"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        * Nominal pokok langsung tersimpan tanpa perlu konfirmasi Pecel. Konfirmasi Pecel hanya diperlukan saat ada pemasukan pembayaran baru.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 6. Jasa Parkir */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
                       <div className="flex items-center gap-1">
@@ -1201,15 +1243,30 @@ export default function DruModal({
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Isi bebas, contoh: 250000"
+                      placeholder="Minimal 15000, kelipatan 1000"
                       value={formJasaParkir}
                       onChange={(e) => setFormJasaParkir(e.target.value.replace(/[^0-9]/g, ''))}
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl text-slate-100 text-xs focus:outline-none"
                     />
                     <p className="text-[11px] text-slate-400 mt-1">
-                      * Isi bebas & manual — tanpa batas minimal/maksimal, boleh dikosongkan (0). Hanya DRU yang dapat melihat nilai ini.
+                      * Minimal Rp 15.000 dan harus kelipatan Rp 1.000. Hanya DRU yang dapat melihat nilai ini.
                     </p>
                   </div>
+
+                  {/* 7. Catatan Unit (Opsional, dapat dihapus/dikosongkan) */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Catatan / Keterangan Unit (Opsional):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Kondisi mulus orisinil / warna hitam doff"
+                      value={formCatatan}
+                      onChange={(e) => setFormCatatan(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl text-slate-100 text-xs focus:outline-none"
+                    />
+                  </div>
+
 
                   {/* 6. Catatan Unit (Opsional, dapat dihapus/dikosongkan) */}
                   <div className="sm:col-span-2">
