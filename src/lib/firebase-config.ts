@@ -1,0 +1,14 @@
+const firebaseConfig = {
+  projectId: "diesel-defender-sthv3",
+  appId: "1:957161274751:web:40274d93b924f34a9aee4a",
+  apiKey: "AIzaSyCZ50l6sJ2o20-P3Td0VibgenDEaEFAvn0",
+  authDomain: "diesel-defender-sthv3.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-fixmotor-231fcb6f-3467-439a-9731-b683e157f16d",
+  storageBucket: "diesel-defender-sthv3.firebasestorage.app",
+  messagingSenderId: "957161274751",
+  measurementId: "",
+  oAuthClientId: "957161274751-5897t339ka3aj0otihcdcnei8livc8s8.apps.googleusercontent.com",
+  recaptchaSiteKey: "",
+};
+
+export default firebaseConfig;
