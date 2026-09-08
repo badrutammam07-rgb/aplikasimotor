@@ -182,69 +182,8 @@ export default function PecelPanel({
         {/* Luxury Teal Top Stripe */}
         <div className="h-1 w-full bg-linear-to-r from-transparent via-teal-400 to-transparent" />
 
-        {/* Header */}
-        <div className="bg-slate-950/80 px-5 sm:px-8 py-4 flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <button
-              id="btn-back-pecel-header"
-              type="button"
-              onClick={onClose}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-teal-300 hover:text-teal-200 border border-teal-500/40 transition cursor-pointer text-xs font-bold active:scale-95 shadow-xs"
-              title="Kembali ke Halaman Utama"
-            >
-              <ArrowLeft className="w-4 h-4 text-teal-400" />
-              <span>Kembali ke Halaman Utama</span>
-            </button>
-            <div className="p-2.5 rounded-xl bg-teal-500/15 border border-teal-500/30 text-teal-400 font-bold">
-              <UserCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-linear-to-r from-teal-200 via-teal-400 to-teal-100 tracking-wide uppercase">
-                  Halaman PECEL
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 border border-teal-500/30 text-teal-300 uppercase">
-                  Khusus Unit Motor Pecel
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                Pemeriksaan unit, nominal, dan konfirmasi pemasukan motor pecel (otomatis tersinkron ke Halaman DRU)
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {onLogout && (
-              <button
-                id="btn-pecel-header-logout"
-                type="button"
-                onClick={onLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-rose-300 hover:text-white transition cursor-pointer text-xs font-bold shadow-xs active:scale-95"
-                title="Logout dan langsung keluar ke halaman utama"
-              >
-                <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                <span>Logout</span>
-              </button>
-            )}
-            <button
-              id="btn-back-pecel-modal"
-              type="button"
-              onClick={onClose}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 hover:text-teal-200 border border-teal-500/40 transition cursor-pointer text-xs font-bold active:scale-95 shadow-xs"
-              title="Kembali ke Halaman Utama"
-            >
-              <Home className="w-3.5 h-3.5 text-teal-400" />
-              <span>Halaman Utama</span>
-            </button>
-            <button
-              id="btn-close-pecel-modal"
-              onClick={onClose}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
-              title="Tutup (Kembali ke Halaman Utama)"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+
+
 
         {/* Navigation Tabs PECEL */}
         <div className="bg-slate-950 border-b border-slate-800 px-5 sm:px-8 flex items-center gap-2 py-2.5">
@@ -286,16 +225,8 @@ export default function PecelPanel({
         <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-900/60 space-y-6">
           {activeTab === 'data' ? (
             <>
-              {/* Reassurance Notice */}
-              <div className="p-3.5 rounded-xl bg-teal-950/40 border border-teal-500/25 flex items-start gap-3 text-xs text-teal-200">
-            <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-teal-300">Konfirmasi Pemasukan Pecel:</span>
-              <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
-                Ketika Anda menekan <strong>Konfirmasi Pemasukan</strong> pada salah satu unit di bawah ini, nilai pemasukan akan <strong>otomatis terisi</strong> di Dashboard Motor Pecel pada Halaman DRU. (Catatan: tarif jasa parkir dirahasiakan oleh sistem DRU).
-              </p>
-            </div>
-          </div>
+
+
 
           {/* Metric Cards Pecel */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
