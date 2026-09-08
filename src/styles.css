@@ -142,3 +142,32 @@
     color: var(--color-foreground);
   }
 }
+
+/* MOTORKU app shell */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#table-scroll-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+#table-scroll-container::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+#table-scroll-container::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+#table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #d97706;
+}
