@@ -385,7 +385,7 @@ export default function DruModal({
       return;
     }
 
-    const jasaParkirNum = formJasaParkir !== '' ? Math.max(0, Number(formJasaParkir)) : 0;
+    const jasaParkirNum = formJasaParkir !== '' && !isNaN(Number(formJasaParkir)) ? Number(formJasaParkir) : 0;
 
     const currentRecord = editingId ? motorData.find((m) => m.id === editingId) : null;
     const payload = {
@@ -1195,21 +1195,19 @@ export default function DruModal({
                         <span>Jasa Parkir (Rp):</span>
                       </div>
                       <span className="text-[11px] text-amber-400 font-mono font-bold">
-                        {formatRupiah(Number(formJasaParkir))}
+                        {formJasaParkir !== '' && !isNaN(Number(formJasaParkir)) ? formatRupiah(Number(formJasaParkir)) : ''}
                       </span>
                     </label>
                     <input
-                      type="number"
-                      min={0}
-                      step={10000}
-                      required
-                      placeholder="Contoh: 250000"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Isi bebas, contoh: 250000"
                       value={formJasaParkir}
-                      onChange={(e) => setFormJasaParkir(e.target.value)}
+                      onChange={(e) => setFormJasaParkir(e.target.value.replace(/[^0-9]/g, ''))}
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl text-slate-100 text-xs focus:outline-none"
                     />
                     <p className="text-[11px] text-slate-400 mt-1">
-                      * Tarif jasa parkir dikelola khusus DRU. Untuk pemasukan unit, gunakan tombol kirim pada tabel untuk mengirim nominal ke bagian Pecel.
+                      * Isi bebas & manual — tanpa batas minimal/maksimal, boleh dikosongkan (0). Hanya DRU yang dapat melihat nilai ini.
                     </p>
                   </div>
 
