@@ -387,6 +387,22 @@ export default function DruModal({
 
     const jasaParkirNum = formJasaParkir !== '' && !isNaN(Number(formJasaParkir)) ? Number(formJasaParkir) : 0;
 
+    if (jasaParkirNum < 15000) {
+      setFormError('Jasa Parkir minimal Rp 15.000.');
+      return;
+    }
+    if (jasaParkirNum % 1000 !== 0) {
+      setFormError('Jasa Parkir harus kelipatan Rp 1.000 (contoh: 15.000, 16.000, 20.000).');
+      return;
+    }
+
+    const nominalPokokNum = formNominal !== '' && !isNaN(Number(formNominal)) ? Number(formNominal) : 0;
+
+    if (!editingId && nominalPokokNum <= 0) {
+      setFormError('Nominal Pokok harus diisi untuk pendaftaran motor baru.');
+      return;
+    }
+
     const currentRecord = editingId ? motorData.find((m) => m.id === editingId) : null;
     const payload = {
       tanggal: formTanggal,
@@ -394,7 +410,7 @@ export default function DruModal({
       motor: formMotor.trim(),
       tahun: Number(formTahun) || formTahun,
       nopol: formNopol.trim().toUpperCase(),
-      nominal: editingId ? (currentRecord?.nominal || 0) : 0,
+      nominal: editingId ? (currentRecord?.nominal || 0) : nominalPokokNum,
       pemasukan: editingId ? (currentRecord?.pemasukan || 0) : 0,
       jasaParkir: jasaParkirNum,
       tarifJasa: jasaParkirNum,
