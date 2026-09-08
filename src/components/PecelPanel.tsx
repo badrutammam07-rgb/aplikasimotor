@@ -790,7 +790,8 @@ export default function PecelPanel({
                     value={inputPemasukanAmount}
                     onChange={(e) => {
                       if (!(selectedRecordForConfirm.statusKirimPecel === 'terkirim' && selectedRecordForConfirm.nominalKirimPecel)) {
-                        setInputPemasukanAmount(Number(e.target.value));
+                        setInputPemasukanAmount(Number(e.target.value.replace(/[^0-9]/g, '')) || 0);
+
                       }
                     }}
                     className={`w-full px-3 py-2.5 bg-slate-950 border rounded-xl text-teal-300 font-mono font-bold text-sm focus:outline-none ${
