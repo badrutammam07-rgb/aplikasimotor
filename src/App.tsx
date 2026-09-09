@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import MotorTable from './components/MotorTable';
 import Footer from './components/Footer';
-import PortalAccessModal from './components/PortalAccessModal';
+import DruLoginModal from './components/DruLoginModal';
 import DruModal from './components/DruModal';
-import PecelPanel from './components/PecelPanel';
+
 import { MotorRecord, AppConfig, ActiveModal } from './types';
 import { INITIAL_MOTOR_DATA, calculateElapsedDays, formatElapsedDays, isLunasExpired } from './data/initialData';
 import {
