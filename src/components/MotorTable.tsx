@@ -442,16 +442,9 @@ export default function MotorTable({
                         <p className="text-xs text-slate-400 max-w-md">
                           {searchTerm
                             ? 'Coba sesuaikan kata kunci pencarian atau filter Anda.'
-                            : 'Semua tabel ini diisi oleh Halaman DRU. Silakan klik logo satu pintu di header untuk masuk ke Halaman DRU.'}
+                            : 'Belum ada unit motor yang terdaftar.'}
                         </p>
-                        <button
-                          id="btn-fill-table-portal"
-                          onClick={onOpenPortalDoors}
-                          className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 cursor-pointer"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          Buka Pintu Portal DRU untuk Isi Tabel
-                        </button>
+
                       </div>
                     )}
                   </td>

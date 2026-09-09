@@ -625,15 +625,10 @@ export default function DruModal({
             <span className="text-sm sm:text-base font-bold text-teal-300 font-mono mt-1 block truncate">
               {formatRupiah(metrics.totalPemasukan)}
             </span>
-            {isPecel ? (
-              <span className="text-[10px] text-teal-400/80 block mt-0.5">
-                * Dari konfirmasi Pecel
-              </span>
-            ) : (
-              <span className="text-[10px] text-teal-400/80 block mt-0.5">
-                * Input manual DRU
-              </span>
-            )}
+            <span className="text-[10px] text-teal-400/80 block mt-0.5">
+              * Input manual DRU
+            </span>
+
           </div>
 
           <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 shadow-md">
@@ -733,46 +728,14 @@ export default function DruModal({
 
                         {/* 7. Pemasukan */}
                         <td className="py-3 px-3.5 text-right whitespace-nowrap">
-                          {isPecel ? (
-                            isPecelConfirmed && item.pemasukan && item.pemasukan > 0 ? (
-                              <div className="flex flex-col items-end">
-                                <span className="font-mono font-bold text-teal-300">
-                                  {formatRupiah(item.pemasukan)}
-                                </span>
-                                <span className="text-[9px] text-emerald-400 font-medium flex items-center gap-0.5">
-                                  <CheckCircle2 className="w-2.5 h-2.5" />
-                                  ✓ Terkonfirmasi Pecel
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-end gap-1">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                  Pending
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenSendPecel(item)}
-                                  className="text-[10px] text-teal-400 hover:text-teal-300 underline font-semibold cursor-pointer flex items-center gap-1"
-                                >
-                                  <Send className="w-2.5 h-2.5" />
-                                  <span>{item.statusKirimPecel === 'terkirim' ? 'Ubah Kirim' : 'Kirim'}</span>
-                                </button>
-                                {item.statusKirimPecel === 'terkirim' && item.nominalKirimPecel ? (
-                                  <span className="text-[9px] text-slate-400 font-mono">
-                                    Terkirim: {formatRupiah(item.nominalKirimPecel)}
-                                  </span>
-                                ) : null}
-                              </div>
-                            )
-                          ) : (
-                            /* Halaman Mamah dan Pribadi: diisi secara manual dan ada tombol simpan */
-                            <ManualPemasukanCell
-                              motorId={item.id}
-                              currentPemasukan={item.pemasukan}
-                              onSave={(id, amount) => onUpdateMotor(id, { pemasukan: amount })}
-                            />
-                          )}
+                          {/* Semua dashboard: pemasukan diisi manual oleh DRU + tombol simpan */}
+                          <ManualPemasukanCell
+                            motorId={item.id}
+                            currentPemasukan={item.pemasukan}
+                            onSave={(id, amount) => onUpdateMotor(id, { pemasukan: amount })}
+                          />
                         </td>
+
 
                         {/* 8. Jasa Parkir (Tambahan - Hanya DRU yang tahu) */}
                         <td className="py-3 px-3.5 text-right whitespace-nowrap">
