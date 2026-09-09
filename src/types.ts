@@ -9,17 +9,17 @@ export interface MotorRecord {
   nopol: string;
   hari: string; // Otomatis terisi jumlah hari sejak motor masuk sampai hari ini
   nominal?: number; // Nominal nilai motor / pinjaman
-  pemasukan?: number; // Pemasukan (untuk pecel terisi otomatis setelah dikonfirmasi pecel)
-  jasaParkir?: number; // Jasa Parkir (Hanya DRU yang tahu, tidak tampil di pecel)
+  pemasukan?: number; // Pemasukan (diisi manual oleh DRU)
+  jasaParkir?: number; // Jasa Parkir (Hanya DRU)
   tarifJasa?: number; // Kompatibilitas alias untuk jasa
-  pemasukanConfirmedByPecel?: boolean; // Konfirmasi pemasukan dari halaman Pecel
+  pemasukanConfirmedByPecel?: boolean; // Legacy field
   pemasukanConfirmedAt?: string;
   kepemilikan: KepemilikanType; // 'pecel' | 'pribadi' | 'mamah'
   lunas?: boolean; // Jika motor sudah lunas, tidak lagi ditampilkan pada halaman utama
   lunasAt?: string;
   catatan?: string;
-  nominalKirimPecel?: number; // Nominal pemasukan yang dikirim oleh DRU ke Halaman Pecel
-  statusKirimPecel?: 'draft' | 'terkirim' | 'dikonfirmasi'; // Status kiriman pemasukan ke pecel
+  nominalKirimPecel?: number; // Legacy field
+  statusKirimPecel?: 'draft' | 'terkirim' | 'dikonfirmasi'; // Legacy field
   tanggalKirimPecel?: string;
   catatanKirimPecel?: string;
 }
@@ -29,4 +29,4 @@ export interface AppConfig {
   appTitle: string;
 }
 
-export type ActiveModal = 'none' | 'portal_doors' | 'dru_login' | 'dru_panel' | 'pecel_login' | 'pecel_panel';
+export type ActiveModal = 'none' | 'dru_login' | 'dru_panel';

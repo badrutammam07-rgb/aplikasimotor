@@ -77,7 +77,8 @@ export default function App() {
 
   // 3. Modals & Authentication State
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
-  const [activeRole, setActiveRole] = useState<'guest' | 'dru' | 'pecel'>('guest');
+  const [activeRole, setActiveRole] = useState<'guest' | 'dru'>('guest');
+
 
   // Real-time synchronization with Firestore
   useEffect(() => {
@@ -359,10 +360,8 @@ export default function App() {
     setActiveModal('dru_panel');
   };
 
-  const handlePecelLoginSuccess = () => {
-    setActiveRole('pecel');
-    setActiveModal('pecel_panel');
-  };
+
+
 
   const handleLogout = () => {
     setActiveRole('guest');
@@ -375,41 +374,38 @@ export default function App() {
       id="motorku-app" 
       className="h-screen h-[100dvh] max-h-screen w-full flex flex-col justify-between bg-slate-950 font-sans text-slate-100 selection:bg-amber-500 selection:text-slate-950 overflow-hidden"
     >
-      {/* 1. Header: LOGO (diatur DRU), Judul MOTORKU, HANYA SATU LOGO PINTU */}
+      {/* 1. Header: LOGO (ketuk 3x untuk login DRU) + Judul EL-GHIGHAIS MOTOR Jakarta */}
       <Header
         config={config}
         activeRole={activeRole}
-        onOpenPortalDoors={() => setActiveModal('portal_doors')}
+        onOpenPortalDoors={() => setActiveModal('dru_login')}
         onOpenDruPanel={() => setActiveModal('dru_panel')}
-        onOpenPecelPanel={() => setActiveModal('pecel_panel')}
         onLogout={handleLogout}
         onGoHome={() => setActiveModal('none')}
       />
 
-      {/* 2. Di Tengah: Tabel bergaris mewah berisi tanggal, motor, tahun, nopol, hari (otomatis hitung) */}
+      {/* 2. Tabel utama */}
       <main id="main-content" className="flex-1 min-h-0 flex flex-col w-full overflow-hidden relative">
         <MotorTable
           data={motorData}
           activeRole={activeRole}
           isLoading={!isDataLoaded}
-          onOpenPortalDoors={() => setActiveModal('portal_doors')}
+          onOpenPortalDoors={() => setActiveModal('none')}
           onStartEditMotor={handleStartEditFromTable}
           onDeleteMotor={handleDeleteMotor}
         />
       </main>
 
-      {/* 3. Footer: Hanya bertuliskan support by ghighais development (tetap di bawah / tidak bergerak) */}
       <Footer />
 
-      {/* Single Door Triggered Modal: Login Halaman DRU dan PECEL */}
-      <PortalAccessModal
-        isOpen={activeModal === 'portal_doors'}
+      {/* Login DRU tersembunyi: muncul setelah logo diketuk 3x */}
+      <DruLoginModal
+        isOpen={activeModal === 'dru_login'}
         onClose={() => setActiveModal('none')}
         onLoginDruSuccess={handleDruLoginSuccess}
-        onLoginPecelSuccess={handlePecelLoginSuccess}
       />
 
-      {/* DRU 3 Dashboards Panel (MOTOR PECEL, MOTOR MAMAH, PRIBADI, Input, Logo) */}
+      {/* DRU Panel (Dashboard Pecel, Mamah, Pribadi, Input, Logo) */}
       <DruModal
         isOpen={activeModal === 'dru_panel'}
         onClose={() => {
@@ -429,16 +425,6 @@ export default function App() {
         initialEditingId={editingMotorId}
       />
 
-      {/* PECEL Panel (Verifikasi Motor Pecel, Konfirmasi Pemasukan Otomatis ke DRU) */}
-      <PecelPanel
-        isOpen={activeModal === 'pecel_panel'}
-        onClose={() => setActiveModal('none')}
-        onLogout={handleLogout}
-        motorData={motorData}
-        onConfirmPemasukan={handleConfirmPemasukanPecel}
-        onCancelConfirmPemasukan={handleCancelConfirmPemasukanPecel}
-        onToggleLunas={handleToggleLunas}
-      />
     </div>
   );
 }
