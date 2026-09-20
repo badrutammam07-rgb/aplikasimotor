@@ -1,0 +1,6 @@
+{
+  "name": "MOTORKU",
+  "description": "Sistem informasi data motor MOTORKU: tabel data unit, manajemen DRU, dan dashboard gabungan dengan database Turso libSQL.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

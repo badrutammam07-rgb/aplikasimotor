@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import Header from './components/Header';
-import MotorTable from './components/MotorTable';
-import Footer from './components/Footer';
-import DruLoginModal from './components/DruLoginModal';
-import DruModal from './components/DruModal';
+import React, { useState, useEffect } from "react";
+import Header from "./components/Header";
+import MotorTable from "./components/MotorTable";
+import Footer from "./components/Footer";
+import DruLoginModal from "./components/DruLoginModal";
+import DruModal from "./components/DruModal";
 
-import { MotorRecord, AppConfig, ActiveModal } from './types';
-import { INITIAL_MOTOR_DATA, calculateElapsedDays, formatElapsedDays, isLunasExpired } from './data/initialData';
+import { MotorRecord, AppConfig, ActiveModal } from "./types";
+import {
+  INITIAL_MOTOR_DATA,
+  calculateElapsedDays,
+  formatElapsedDays,
+  isLunasExpired,
+} from "./data/initialData";
 import {
   subscribeToMotors,
   subscribeToAppConfig,
@@ -14,18 +19,18 @@ import {
   updateMotor,
   deleteMotor,
   updateAppConfig,
-  seedInitialMotorsIfEmpty
-} from './services/motorService';
-import { testFirestoreConnection } from './lib/firebase';
+  seedInitialMotorsIfEmpty,
+} from "./services/motorService";
+import { testTursoConnection } from "./lib/turso";
 
-const STORAGE_KEY_RECORDS = 'motorku_records_v2';
-const STORAGE_KEY_CONFIG = 'motorku_config_v2';
-const STORAGE_KEY_DELETED_IDS = 'motorku_deleted_motor_ids_v2';
+const STORAGE_KEY_RECORDS = "motorku_records_v2";
+const STORAGE_KEY_CONFIG = "motorku_config_v2";
+const STORAGE_KEY_DELETED_IDS = "motorku_deleted_motor_ids_v2";
 
 export default function App() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // 1. Motor Data state: initialized from local cache (with deleted items filtered out), synchronized in real-time with Firestore
+  // 1. Motor Data state: initialized from local cache (with deleted items filtered out), synchronized in real-time with Turso
   const [motorData, setMotorData] = useState<MotorRecord[]>(() => {
     try {
       const savedDeleted = localStorage.getItem(STORAGE_KEY_DELETED_IDS);
@@ -37,25 +42,31 @@ export default function App() {
         if (Array.isArray(parsed)) {
           // Filter out motor yang sudah dihapus permanen atau motor lunas yang sudah kadaluarsa
           return parsed
-            .filter((item: MotorRecord) => !deletedArr.includes(item.id) && !(item.lunas && isLunasExpired(item.lunasAt)))
+            .filter(
+              (item: MotorRecord) =>
+                !deletedArr.includes(item.id) && !(item.lunas && isLunasExpired(item.lunasAt)),
+            )
             .map((item: MotorRecord) => ({
               ...item,
               hari: formatElapsedDays(item.tanggal),
-              kepemilikan: item.kepemilikan || 'pecel',
+              kepemilikan: item.kepemilikan || "pecel",
               nominal: item.nominal !== undefined ? item.nominal : 0,
               pemasukan: item.pemasukan !== undefined ? item.pemasukan : 0,
               jasaParkir: item.jasaParkir !== undefined ? item.jasaParkir : item.tarifJasa || 0,
               tarifJasa: item.tarifJasa !== undefined ? item.tarifJasa : item.jasaParkir || 0,
-              pemasukanConfirmedByPecel: item.pemasukanConfirmedByPecel !== undefined ? item.pemasukanConfirmedByPecel : false,
+              pemasukanConfirmedByPecel:
+                item.pemasukanConfirmedByPecel !== undefined
+                  ? item.pemasukanConfirmedByPecel
+                  : false,
               lunas: item.lunas !== undefined ? !!item.lunas : false,
-              lunasAt: item.lunasAt || undefined
+              lunasAt: item.lunasAt || undefined,
             }));
         }
       }
     } catch (e) {
-      console.error('Failed to load motor data from localStorage', e);
+      console.error("Failed to load motor data from localStorage", e);
     }
-    // Return empty array initially until Firestore real-time snapshot loads
+    // Return empty array initially until Turso real-time snapshot loads
     return [];
   });
 
@@ -67,23 +78,26 @@ export default function App() {
         return JSON.parse(saved);
       }
     } catch (e) {
-      console.error('Failed to load config from localStorage', e);
+      console.error("Failed to load config from localStorage", e);
     }
     return {
       logoUrl: null,
-      appTitle: 'MOTORKU'
+      appTitle: "MOTORKU",
     };
   });
 
-  // 3. Modals & Authentication State
-  const [activeModal, setActiveModal] = useState<ActiveModal>('none');
-  const [activeRole, setActiveRole] = useState<'guest' | 'dru'>('guest');
+  // 3. Modals & Authentication
+  const [activeModal, setActiveModal] = useState<ActiveModal>("none");
+  const [activeRole, setActiveRole] = useState<"guest" | "dru">("guest");
 
-
-  // Real-time synchronization with Firestore
+  // Real-time synchronization with Turso libSQL
   useEffect(() => {
-    // Check connection
-    testFirestoreConnection();
+    // Check connection to Turso database
+    testTursoConnection().then((res) => {
+      if (res.connected) {
+        console.log("Turso Database:", res.message);
+      }
+    });
 
     // Subscribe to real-time motor updates
     const unsubscribeMotors = subscribeToMotors(
@@ -108,9 +122,9 @@ export default function App() {
         setMotorData(safeMotors);
       },
       (err) => {
-        console.warn('Firestore live sync listener error:', err);
+        console.warn("Turso live sync listener error:", err);
         setIsDataLoaded(true);
-      }
+      },
     );
 
     // Subscribe to real-time config updates (e.g. logo changes by DRU)
@@ -118,12 +132,12 @@ export default function App() {
       (liveConfig) => {
         setConfig((prev) => ({
           ...prev,
-          ...liveConfig
+          ...liveConfig,
         }));
       },
       (err) => {
-        console.warn('Firestore config listener error:', err);
-      }
+        console.warn("Turso config listener error:", err);
+      },
     );
 
     return () => {
@@ -137,7 +151,7 @@ export default function App() {
     try {
       localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(motorData));
     } catch (e) {
-      console.error('Failed to save motor data to localStorage', e);
+      console.error("Failed to save motor data to localStorage", e);
     }
   }, [motorData]);
 
@@ -156,7 +170,7 @@ export default function App() {
     try {
       localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
     } catch (e) {
-      console.error('Failed to save config to localStorage', e);
+      console.error("Failed to save config to localStorage", e);
     }
   }, [config]);
 
@@ -164,22 +178,22 @@ export default function App() {
   const handleUpdateLogo = async (logoUrl: string | null) => {
     setConfig((prev) => ({
       ...prev,
-      logoUrl
+      logoUrl,
     }));
     try {
       localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify({ ...config, logoUrl }));
     } catch (e) {
-      console.error('Failed to sync config to localStorage', e);
+      console.error("Failed to sync config to localStorage", e);
     }
     await updateAppConfig({ logoUrl });
   };
 
   // Handler for adding motor from DRU - synced real-time
-  const handleAddMotor = async (newRecord: Omit<MotorRecord, 'id'>) => {
+  const handleAddMotor = async (newRecord: Omit<MotorRecord, "id">) => {
     const recordWithId: MotorRecord = {
       ...newRecord,
-      id: 'rec-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
-      hari: formatElapsedDays(newRecord.tanggal)
+      id: "rec-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      hari: formatElapsedDays(newRecord.tanggal),
     };
     setMotorData((prev) => [recordWithId, ...prev]);
     await addMotor(recordWithId);
@@ -194,18 +208,18 @@ export default function App() {
           return {
             ...item,
             ...updatedFields,
-            hari: formatElapsedDays(updatedDate)
+            hari: formatElapsedDays(updatedDate),
           };
         }
         return item;
-      })
+      }),
     );
     await updateMotor(id, updatedFields);
   };
 
-  // Handler for deleting motor from DRU - permanently synced to Firestore
+  // Handler for deleting motor from DRU - permanently synced to Turso
   const handleDeleteMotor = async (id: string) => {
-    const cleanId = typeof id === 'string' ? id.trim() : '';
+    const cleanId = typeof id === "string" ? id.trim() : "";
     if (!cleanId) return;
 
     // 1. Immediately remove from local state and update tombstone
@@ -220,7 +234,7 @@ export default function App() {
           localStorage.setItem(STORAGE_KEY_DELETED_IDS, JSON.stringify(deletedArr));
         }
       } catch (e) {
-        console.error('Failed to sync deletion to localStorage', e);
+        console.error("Failed to sync deletion to localStorage", e);
       }
       return updated;
     });
@@ -255,19 +269,19 @@ export default function App() {
           const nextLunas = isLunas !== undefined ? isLunas : !item.lunas;
           updatePayload = {
             lunas: nextLunas,
-            lunasAt: nextLunas ? (item.lunasAt || new Date().toISOString()) : undefined
+            lunasAt: nextLunas ? item.lunasAt || new Date().toISOString() : undefined,
           };
           return {
             ...item,
-            ...updatePayload
+            ...updatePayload,
           };
         }
         return item;
-      })
+      }),
     );
     if (id && Object.keys(updatePayload).length > 0) {
       updateMotor(id, updatePayload).catch((err) => {
-        console.error('Failed to sync lunas status to Firestore:', err);
+        console.error("Failed to sync lunas status to Turso:", err);
       });
     }
   };
@@ -276,24 +290,24 @@ export default function App() {
   const handleSendPemasukanToPecel = (recordId: string, amount: number, notes?: string) => {
     const payload: Partial<MotorRecord> = {
       nominalKirimPecel: amount,
-      statusKirimPecel: 'terkirim',
-      tanggalKirimPecel: new Date().toISOString().split('T')[0],
-      catatanKirimPecel: notes || '',
-      pemasukanConfirmedByPecel: false
+      statusKirimPecel: "terkirim",
+      tanggalKirimPecel: new Date().toISOString().split("T")[0],
+      catatanKirimPecel: notes || "",
+      pemasukanConfirmedByPecel: false,
     };
     setMotorData((prev) =>
       prev.map((item) => {
         if (item.id === recordId) {
           return {
             ...item,
-            ...payload
+            ...payload,
           };
         }
         return item;
-      })
+      }),
     );
     updateMotor(recordId, payload).catch((err) => {
-      console.error('Failed to sync send pemasukan to Firestore:', err);
+      console.error("Failed to sync send pemasukan to Turso:", err);
     });
   };
 
@@ -302,23 +316,23 @@ export default function App() {
     const payload: Partial<MotorRecord> = {
       pemasukan: amount,
       nominalKirimPecel: amount,
-      statusKirimPecel: 'dikonfirmasi',
+      statusKirimPecel: "dikonfirmasi",
       pemasukanConfirmedByPecel: true,
-      pemasukanConfirmedAt: new Date().toISOString().split('T')[0]
+      pemasukanConfirmedAt: new Date().toISOString().split("T")[0],
     };
     setMotorData((prev) =>
       prev.map((item) => {
         if (item.id === recordId) {
           return {
             ...item,
-            ...payload
+            ...payload,
           };
         }
         return item;
-      })
+      }),
     );
     updateMotor(recordId, payload).catch((err) => {
-      console.error('Failed to sync confirmation to Firestore:', err);
+      console.error("Failed to sync confirmation to Turso:", err);
     });
   };
 
@@ -328,21 +342,21 @@ export default function App() {
       pemasukan: 0,
       pemasukanConfirmedByPecel: false,
       pemasukanConfirmedAt: undefined,
-      statusKirimPecel: currentItem?.nominalKirimPecel ? 'terkirim' : undefined
+      statusKirimPecel: currentItem?.nominalKirimPecel ? "terkirim" : undefined,
     };
     setMotorData((prev) =>
       prev.map((item) => {
         if (item.id === recordId) {
           return {
             ...item,
-            ...payload
+            ...payload,
           };
         }
         return item;
-      })
+      }),
     );
     updateMotor(recordId, payload).catch((err) => {
-      console.error('Failed to sync cancel confirmation to Firestore:', err);
+      console.error("Failed to sync cancel confirmation to Turso:", err);
     });
   };
 
@@ -351,46 +365,46 @@ export default function App() {
 
   const handleStartEditFromTable = (record: MotorRecord) => {
     setEditingMotorId(record.id);
-    setActiveModal('dru_panel');
+    setActiveModal("dru_panel");
   };
 
   // Auth Handlers
   const handleDruLoginSuccess = () => {
-    setActiveRole('dru');
-    setActiveModal('dru_panel');
+    setActiveRole("dru");
+    setActiveModal("dru_panel");
   };
 
-
-
-
   const handleLogout = () => {
-    setActiveRole('guest');
-    setActiveModal('none');
+    setActiveRole("guest");
+    setActiveModal("none");
     setEditingMotorId(null);
   };
 
   return (
-    <div 
-      id="motorku-app" 
+    <div
+      id="motorku-app"
       className="h-screen h-[100dvh] max-h-screen w-full flex flex-col justify-between bg-slate-950 font-sans text-slate-100 selection:bg-amber-500 selection:text-slate-950 overflow-hidden"
     >
       {/* 1. Header: LOGO (ketuk 3x untuk login DRU) + Judul EL-GHIGHAIS MOTOR Jakarta */}
       <Header
         config={config}
         activeRole={activeRole}
-        onOpenPortalDoors={() => setActiveModal('dru_login')}
-        onOpenDruPanel={() => setActiveModal('dru_panel')}
+        onOpenPortalDoors={() => setActiveModal("dru_login")}
+        onOpenDruPanel={() => setActiveModal("dru_panel")}
         onLogout={handleLogout}
-        onGoHome={() => setActiveModal('none')}
+        onGoHome={() => setActiveModal("none")}
       />
 
-      {/* 2. Tabel utama */}
-      <main id="main-content" className="flex-1 min-h-0 flex flex-col w-full overflow-hidden relative">
+      {/* 2. Konten utama: Tabel Utama */}
+      <main
+        id="main-content"
+        className="flex-1 min-h-0 flex flex-col w-full overflow-hidden relative"
+      >
         <MotorTable
           data={motorData}
           activeRole={activeRole}
           isLoading={!isDataLoaded}
-          onOpenPortalDoors={() => setActiveModal('none')}
+          onOpenPortalDoors={() => setActiveModal("none")}
           onStartEditMotor={handleStartEditFromTable}
           onDeleteMotor={handleDeleteMotor}
         />
@@ -400,16 +414,16 @@ export default function App() {
 
       {/* Login DRU tersembunyi: muncul setelah logo diketuk 3x */}
       <DruLoginModal
-        isOpen={activeModal === 'dru_login'}
-        onClose={() => setActiveModal('none')}
+        isOpen={activeModal === "dru_login"}
+        onClose={() => setActiveModal("none")}
         onLoginDruSuccess={handleDruLoginSuccess}
       />
 
       {/* DRU Panel (Dashboard Pecel, Mamah, Pribadi, Input, Logo) */}
       <DruModal
-        isOpen={activeModal === 'dru_panel'}
+        isOpen={activeModal === "dru_panel"}
         onClose={() => {
-          setActiveModal('none');
+          setActiveModal("none");
           setEditingMotorId(null);
         }}
         onLogout={handleLogout}
@@ -424,7 +438,6 @@ export default function App() {
         onSendPemasukanToPecel={handleSendPemasukanToPecel}
         initialEditingId={editingMotorId}
       />
-
     </div>
   );
 }

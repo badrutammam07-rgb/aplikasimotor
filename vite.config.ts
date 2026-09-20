@@ -12,4 +12,20 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    define: {
+      "process.env.TURSO_DATABASE_URL": JSON.stringify(
+        process.env.TURSO_DATABASE_URL || process.env.VITE_TURSO_DATABASE_URL || "",
+      ),
+      "process.env.TURSO_AUTH_TOKEN": JSON.stringify(
+        process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_AUTH_TOKEN || "",
+      ),
+      "process.env.VITE_TURSO_DATABASE_URL": JSON.stringify(
+        process.env.VITE_TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL || "",
+      ),
+      "process.env.VITE_TURSO_AUTH_TOKEN": JSON.stringify(
+        process.env.VITE_TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || "",
+      ),
+    },
+  },
 });

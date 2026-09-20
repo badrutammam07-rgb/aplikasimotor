@@ -1,5 +1,5 @@
-export type KepemilikanType = 'pecel' | 'pribadi' | 'mamah';
-export type MotorStatusType = 'PARKIR' | 'LELANG' | 'LUNAS';
+export type KepemilikanType = "pecel" | "pribadi" | "mamah";
+export type MotorStatusType = "PARKIR" | "LELANG" | "LUNAS";
 
 export interface MotorRecord {
   id: string;
@@ -19,7 +19,7 @@ export interface MotorRecord {
   lunasAt?: string;
   catatan?: string;
   nominalKirimPecel?: number; // Legacy field
-  statusKirimPecel?: 'draft' | 'terkirim' | 'dikonfirmasi'; // Legacy field
+  statusKirimPecel?: "draft" | "terkirim" | "dikonfirmasi"; // Legacy field
   tanggalKirimPecel?: string;
   catatanKirimPecel?: string;
 }
@@ -29,4 +29,4 @@ export interface AppConfig {
   appTitle: string;
 }
 
-export type ActiveModal = 'none' | 'dru_login' | 'dru_panel';
+export type ActiveModal = "none" | "dru_login" | "dru_panel";

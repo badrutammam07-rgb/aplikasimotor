@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   X,
   ShieldCheck,
@@ -11,13 +11,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Lock,
-  ArrowLeft
-} from 'lucide-react';
-import {
-  verifyLoginPassword,
-  resetPasswordWithMasterCode,
-  DEFAULT_PASSWORD
-} from '../utils/auth';
+  ArrowLeft,
+} from "lucide-react";
+import { verifyLoginPassword, resetPasswordWithMasterCode, DEFAULT_PASSWORD } from "../utils/auth";
 
 interface DruLoginModalProps {
   isOpen: boolean;
@@ -26,31 +22,31 @@ interface DruLoginModalProps {
 }
 
 export default function DruLoginModal({ isOpen, onClose, onLoginDruSuccess }: DruLoginModalProps) {
-  const [druPassword, setDruPassword] = useState('');
+  const [druPassword, setDruPassword] = useState("");
   const [showDruPassword, setShowDruPassword] = useState(false);
-  const [druError, setDruError] = useState('');
-  const [druSuccess, setDruSuccess] = useState('');
+  const [druError, setDruError] = useState("");
+  const [druSuccess, setDruSuccess] = useState("");
 
   const [isRecovery, setIsRecovery] = useState(false);
-  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState("");
   const [showRecoveryCode, setShowRecoveryCode] = useState(false);
-  const [recoveryError, setRecoveryError] = useState('');
-  const [recoverySuccess, setRecoverySuccess] = useState('');
+  const [recoveryError, setRecoveryError] = useState("");
+  const [recoverySuccess, setRecoverySuccess] = useState("");
 
   if (!isOpen) return null;
 
   const handleDruSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setDruError('');
-    setDruSuccess('');
+    setDruError("");
+    setDruSuccess("");
 
     if (!druPassword) {
-      setDruError('Password DRU harus diisi.');
+      setDruError("Password DRU harus diisi.");
       return;
     }
 
-    if (verifyLoginPassword('dru', druPassword)) {
-      setDruSuccess('Login DRU berhasil. Membuka panel pengelola...');
+    if (verifyLoginPassword("dru", druPassword)) {
+      setDruSuccess("Login DRU berhasil. Membuka panel pengelola...");
       setTimeout(() => {
         onLoginDruSuccess();
       }, 300);
@@ -61,19 +57,19 @@ export default function DruLoginModal({ isOpen, onClose, onLoginDruSuccess }: Dr
 
   const handleRecoverySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setRecoveryError('');
-    setRecoverySuccess('');
+    setRecoveryError("");
+    setRecoverySuccess("");
 
-    const res = resetPasswordWithMasterCode('dru', recoveryCode);
+    const res = resetPasswordWithMasterCode("dru", recoveryCode);
     if (res.success) {
       setRecoverySuccess(res.message);
       setDruPassword(DEFAULT_PASSWORD);
-      setDruError('');
-      setDruSuccess('Password kembali ke ' + DEFAULT_PASSWORD);
+      setDruError("");
+      setDruSuccess("Password kembali ke " + DEFAULT_PASSWORD);
       setTimeout(() => {
         setIsRecovery(false);
-        setRecoveryCode('');
-        setRecoverySuccess('');
+        setRecoveryCode("");
+        setRecoverySuccess("");
       }, 2200);
     } else {
       setRecoveryError(res.message);
@@ -146,9 +142,9 @@ export default function DruLoginModal({ isOpen, onClose, onLoginDruSuccess }: Dr
                     type="button"
                     onClick={() => {
                       setIsRecovery(true);
-                      setRecoveryError('');
-                      setRecoverySuccess('');
-                      setRecoveryCode('');
+                      setRecoveryError("");
+                      setRecoverySuccess("");
+                      setRecoveryCode("");
                     }}
                     className="text-xs text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 transition"
                   >
@@ -160,12 +156,12 @@ export default function DruLoginModal({ isOpen, onClose, onLoginDruSuccess }: Dr
                 <div className="relative">
                   <input
                     id="input-dru-password"
-                    type={showDruPassword ? 'text' : 'password'}
+                    type={showDruPassword ? "text" : "password"}
                     placeholder="Masukkan password..."
                     value={druPassword}
                     onChange={(e) => {
                       setDruPassword(e.target.value);
-                      setDruError('');
+                      setDruError("");
                     }}
                     autoFocus
                     className="w-full pl-3.5 pr-12 py-2.5 text-sm bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none transition shadow-inner"
@@ -174,7 +170,7 @@ export default function DruLoginModal({ isOpen, onClose, onLoginDruSuccess }: Dr
                     type="button"
                     onClick={() => setShowDruPassword(!showDruPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 transition p-1"
-                    title={showDruPassword ? 'Sembunyikan Password' : 'Tampilkan Password'}
+                    title={showDruPassword ? "Sembunyikan Password" : "Tampilkan Password"}
                   >
                     {showDruPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -217,12 +213,12 @@ export default function DruLoginModal({ isOpen, onClose, onLoginDruSuccess }: Dr
               <div className="relative">
                 <input
                   id="input-recovery-code"
-                  type={showRecoveryCode ? 'text' : 'password'}
+                  type={showRecoveryCode ? "text" : "password"}
                   placeholder="Kode pemulihan..."
                   value={recoveryCode}
                   onChange={(e) => {
                     setRecoveryCode(e.target.value);
-                    setRecoveryError('');
+                    setRecoveryError("");
                   }}
                   autoFocus
                   className="w-full pl-3.5 pr-12 py-2.5 text-sm bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none transition shadow-inner"

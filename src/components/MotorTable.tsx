@@ -1,35 +1,52 @@
-import React, { useState, useMemo } from 'react';
-import { Search, ArrowUpDown, ShieldAlert, Sparkles, Clock, CalendarDays, Bike, Lock, ShieldCheck, Layers, Tag, Flame, ParkingMeter, Edit2, Trash2, AlertTriangle } from 'lucide-react';
-import { MotorRecord, KepemilikanType } from '../types';
-import { calculateElapsedDays, formatElapsedDays } from '../data/initialData';
+import React, { useState, useMemo } from "react";
+import {
+  Search,
+  ArrowUpDown,
+  ShieldAlert,
+  Sparkles,
+  Clock,
+  CalendarDays,
+  Bike,
+  Lock,
+  ShieldCheck,
+  Layers,
+  Tag,
+  Flame,
+  ParkingMeter,
+  Edit2,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
+import { MotorRecord, KepemilikanType } from "../types";
+import { calculateElapsedDays, formatElapsedDays } from "../data/initialData";
 
 interface MotorTableProps {
   data: MotorRecord[];
-  activeRole?: 'guest' | 'dru' | 'pecel';
+  activeRole?: "guest" | "dru" | "pecel";
   isLoading?: boolean;
   onOpenPortalDoors: () => void;
   onStartEditMotor?: (record: MotorRecord) => void;
   onDeleteMotor?: (id: string) => Promise<void> | void;
 }
 
-type SortField = 'tanggal' | 'motor' | 'tahun' | 'nopol' | 'hari' | 'status';
-type SortOrder = 'asc' | 'desc';
+type SortField = "tanggal" | "motor" | "tahun" | "nopol" | "hari" | "status";
+type SortOrder = "asc" | "desc";
 
 export default function MotorTable({
   data,
-  activeRole = 'guest',
+  activeRole = "guest",
   isLoading = false,
   onOpenPortalDoors,
   onStartEditMotor,
-  onDeleteMotor
+  onDeleteMotor,
 }: MotorTableProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [kepemilikanFilter, setKepemilikanFilter] = useState<'all' | KepemilikanType>('all');
-  const [sortField, setSortField] = useState<SortField>('tanggal');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [kepemilikanFilter, setKepemilikanFilter] = useState<"all" | KepemilikanType>("all");
+  const [sortField, setSortField] = useState<SortField>("tanggal");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [itemToDelete, setItemToDelete] = useState<MotorRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteNotice, setDeleteNotice] = useState('');
+  const [deleteNotice, setDeleteNotice] = useState("");
 
   // "Namun untuk semua motor yang terinput akan masuk ke halaman utama untuk tabel tetap sama"
   // Mandat: jika motor sudah lunas maka motor tersebut tidak lagi ditampilkan pada halaman utama
@@ -39,13 +56,13 @@ export default function MotorTable({
       .map((item) => {
         const elapsed = calculateElapsedDays(item.tanggal);
         // Aturan Status: Jika sudah lebih dari 3 bulan (> 90 hari) maka LELANG, jika dibawah itu maka PARKIR
-        const status = elapsed > 90 ? 'LELANG' : 'PARKIR';
+        const status = elapsed > 90 ? "LELANG" : "PARKIR";
         return {
           ...item,
           elapsedDays: elapsed,
           hariDisplay: formatElapsedDays(item.tanggal),
           status,
-          kepemilikanVal: item.kepemilikan || 'pecel'
+          kepemilikanVal: item.kepemilikan || "pecel",
         };
       });
   }, [data]);
@@ -55,7 +72,7 @@ export default function MotorTable({
     let parkir = 0;
     let lelang = 0;
     allDataProcessed.forEach((item) => {
-      if (item.status === 'LELANG') {
+      if (item.status === "LELANG") {
         lelang++;
       } else {
         parkir++;
@@ -77,46 +94,48 @@ export default function MotorTable({
           item.kepemilikanVal.toLowerCase().includes(searchTerm.toLowerCase());
 
         let matchKepemilikan = true;
-        if (kepemilikanFilter !== 'all') {
+        if (kepemilikanFilter !== "all") {
           matchKepemilikan = item.kepemilikanVal === kepemilikanFilter;
         }
 
         return matchSearch && matchKepemilikan;
       })
       .sort((a, b) => {
-        if (sortField === 'hari') {
-          return sortOrder === 'asc' ? a.elapsedDays - b.elapsedDays : b.elapsedDays - a.elapsedDays;
+        if (sortField === "hari") {
+          return sortOrder === "asc"
+            ? a.elapsedDays - b.elapsedDays
+            : b.elapsedDays - a.elapsedDays;
         }
         const valA = a[sortField];
         const valB = b[sortField];
 
-        if (typeof valA === 'string' && typeof valB === 'string') {
-          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        if (typeof valA === "string" && typeof valB === "string") {
+          return sortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
         }
-        if (typeof valA === 'number' && typeof valB === 'number') {
-          return sortOrder === 'asc' ? valA - valB : valB - valA;
+        if (typeof valA === "number" && typeof valB === "number") {
+          return sortOrder === "asc" ? valA - valB : valB - valA;
         }
         return 0;
       });
-  }, [allDataProcessed, searchTerm, kepemilikanFilter, sortField, sortOrder, activeRole]);
+  }, [allDataProcessed, searchTerm, kepemilikanFilter, sortField, sortOrder]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortOrder('asc');
+      setSortOrder("asc");
     }
   };
 
   return (
-    <div 
-      id="motor-table-section" 
+    <div
+      id="motor-table-section"
       className="flex-1 min-h-0 flex flex-col w-full bg-slate-950 text-slate-100 overflow-hidden relative"
     >
       {/* Luxury Filter & Search Toolbar (Statik / Tidak Bergerak) */}
-      <div 
-        id="table-toolbar" 
+      <div
+        id="table-toolbar"
         className="shrink-0 w-full bg-linear-to-r from-slate-900 via-slate-925 to-slate-900 border-b border-amber-500/20 px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 shadow-md z-20"
       >
         {/* Left: Search box */}
@@ -136,32 +155,37 @@ export default function MotorTable({
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Quick Status Badges */}
           <div className="flex items-center gap-2">
-            <span 
+            <span
               title="Unit motor dengan status PARKIR (≤ 90 hari / 3 bulan)"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 whitespace-nowrap"
             >
               <ParkingMeter className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>Parkir: <strong className="font-mono text-emerald-200">{statusCounts.parkir}</strong></span>
+              <span>
+                Parkir:{" "}
+                <strong className="font-mono text-emerald-200">{statusCounts.parkir}</strong>
+              </span>
             </span>
 
-            <span 
+            <span
               title="Unit motor dengan status LELANG (> 90 hari / 3 bulan)"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/15 border border-rose-500/30 text-rose-300 whitespace-nowrap"
             >
               <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-              <span>Lelang: <strong className="font-mono text-rose-200">{statusCounts.lelang}</strong></span>
+              <span>
+                Lelang: <strong className="font-mono text-rose-200">{statusCounts.lelang}</strong>
+              </span>
             </span>
           </div>
 
           {/* DRU Ownership Filter (Only available when logged in as DRU) */}
-          {activeRole === 'dru' && (
+          {activeRole === "dru" && (
             <div className="flex items-center gap-1.5 text-xs text-slate-300">
               <Layers className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden sm:inline font-medium">Hak:</span>
               <select
                 id="select-filter-kepemilikan"
                 value={kepemilikanFilter}
-                onChange={(e) => setKepemilikanFilter(e.target.value as any)}
+                onChange={(e) => setKepemilikanFilter(e.target.value as "all" | KepemilikanType)}
                 className="px-2.5 py-1.5 text-xs bg-slate-950 border border-amber-500/40 rounded-xl text-amber-300 focus:outline-none cursor-pointer"
               >
                 <option value="all">Semua Kepemilikan</option>
@@ -173,7 +197,7 @@ export default function MotorTable({
           )}
 
           {/* Role Status Tag */}
-          {activeRole === 'dru' ? (
+          {activeRole === "dru" ? (
             <span className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 border border-amber-500/40 text-amber-300">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Akses DRU</span>
@@ -188,22 +212,22 @@ export default function MotorTable({
       </div>
 
       {/* Main Luxury Table: Seluruh 6 kolom (Tanggal, Motor, Tahun, Nopol, Hari, Status) tampil jelas */}
-      <div 
-        id="table-scroll-container" 
+      <div
+        id="table-scroll-container"
         className="flex-1 min-h-0 w-full overflow-y-auto relative scroll-smooth bg-slate-950 p-2.5 sm:p-5"
       >
         <div className="w-full max-w-7xl mx-auto rounded-2xl border border-slate-800 shadow-2xl shadow-black/80 bg-slate-950 overflow-x-auto">
-          <table 
-            id="main-motor-table" 
+          <table
+            id="main-motor-table"
             className="w-full text-left border-collapse table-auto min-w-[680px]"
           >
             {/* Sticky Luxury Header */}
             <thead className="sticky top-0 z-10 bg-linear-to-b from-slate-900 to-slate-950 text-amber-200/90 text-xs uppercase tracking-wider select-none shadow-lg shadow-black/60 border-b border-amber-500/30">
               <tr className="divide-x divide-slate-800">
                 {/* 1. Tanggal Masuk */}
-                <th 
-                  id="th-tanggal" 
-                  onClick={() => handleSort('tanggal')}
+                <th
+                  id="th-tanggal"
+                  onClick={() => handleSort("tanggal")}
                   className="py-3 px-3 sm:px-4 font-bold cursor-pointer hover:bg-slate-800/80 hover:text-amber-300 transition whitespace-nowrap"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -216,9 +240,9 @@ export default function MotorTable({
                 </th>
 
                 {/* 2. Motor */}
-                <th 
-                  id="th-motor" 
-                  onClick={() => handleSort('motor')}
+                <th
+                  id="th-motor"
+                  onClick={() => handleSort("motor")}
                   className="py-3 px-3 sm:px-4 font-bold cursor-pointer hover:bg-slate-800/80 hover:text-amber-300 transition whitespace-nowrap"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -231,9 +255,9 @@ export default function MotorTable({
                 </th>
 
                 {/* 3. Tahun */}
-                <th 
-                  id="th-tahun" 
-                  onClick={() => handleSort('tahun')}
+                <th
+                  id="th-tahun"
+                  onClick={() => handleSort("tahun")}
                   className="py-3 px-2 sm:px-3 font-bold cursor-pointer hover:bg-slate-800/80 hover:text-amber-300 transition whitespace-nowrap text-center"
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -243,9 +267,9 @@ export default function MotorTable({
                 </th>
 
                 {/* 4. Nopol */}
-                <th 
-                  id="th-nopol" 
-                  onClick={() => handleSort('nopol')}
+                <th
+                  id="th-nopol"
+                  onClick={() => handleSort("nopol")}
                   className="py-3 px-3 sm:px-4 font-bold cursor-pointer hover:bg-slate-800/80 hover:text-amber-300 transition whitespace-nowrap text-center"
                 >
                   <div className="flex items-center justify-center gap-1.5">
@@ -255,9 +279,9 @@ export default function MotorTable({
                 </th>
 
                 {/* 5. Hari (Otomatis Dihitung dari Tanggal Motor Masuk Sampai Hari Ini) */}
-                <th 
-                  id="th-hari" 
-                  onClick={() => handleSort('hari')}
+                <th
+                  id="th-hari"
+                  onClick={() => handleSort("hari")}
                   className="py-3 px-3 sm:px-4 font-bold cursor-pointer hover:bg-slate-800/80 hover:text-amber-300 transition whitespace-nowrap text-center bg-slate-900/60"
                   title="Dihitung otomatis: jumlah hari sejak tanggal motor masuk sampai hari ini"
                 >
@@ -269,9 +293,9 @@ export default function MotorTable({
                 </th>
 
                 {/* 6. Status (LELANG jika > 3 bulan, PARKIR jika ≤ 3 bulan) */}
-                <th 
-                  id="th-status" 
-                  onClick={() => handleSort('status')}
+                <th
+                  id="th-status"
+                  onClick={() => handleSort("status")}
                   className="py-3 px-3 sm:px-4 font-bold cursor-pointer hover:bg-slate-800/80 hover:text-amber-300 transition whitespace-nowrap text-center bg-slate-900/60"
                   title="Status: LELANG jika > 3 bulan (> 90 hari), PARKIR jika ≤ 3 bulan"
                 >
@@ -283,7 +307,7 @@ export default function MotorTable({
                 </th>
 
                 {/* 7. DRU Admin Actions: Edit & Hapus Motor */}
-                {activeRole === 'dru' && (
+                {activeRole === "dru" && (
                   <th
                     id="th-dru-action"
                     className="py-3 px-3 sm:px-4 font-bold text-center bg-slate-900/80 text-amber-400 whitespace-nowrap border-l border-slate-800"
@@ -323,14 +347,14 @@ export default function MotorTable({
                           </span>
 
                           {/* DRU Mode Kepemilikan Tag */}
-                          {activeRole === 'dru' && (
+                          {activeRole === "dru" && (
                             <span
                               className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-md border whitespace-nowrap ${
-                                row.kepemilikanVal === 'pecel'
-                                  ? 'bg-teal-950/60 border-teal-500/40 text-teal-300'
-                                  : row.kepemilikanVal === 'pribadi'
-                                  ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
-                                  : 'bg-purple-950/60 border-purple-500/40 text-purple-300'
+                                row.kepemilikanVal === "pecel"
+                                  ? "bg-teal-950/60 border-teal-500/40 text-teal-300"
+                                  : row.kepemilikanVal === "pribadi"
+                                    ? "bg-amber-950/60 border-amber-500/40 text-amber-300"
+                                    : "bg-purple-950/60 border-purple-500/40 text-purple-300"
                               }`}
                             >
                               {row.kepemilikanVal}
@@ -358,10 +382,10 @@ export default function MotorTable({
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold font-mono tracking-tight shadow-xs whitespace-nowrap ${
                             isFresh
-                              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
+                              ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40"
                               : isMedium
-                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40'
-                              : 'bg-rose-500/15 text-rose-300 border border-rose-500/40'
+                                ? "bg-amber-500/15 text-amber-300 border border-amber-500/40"
+                                : "bg-rose-500/15 text-rose-300 border border-rose-500/40"
                           }`}
                         >
                           <Clock className="w-3.5 h-3.5 opacity-80 shrink-0" />
@@ -371,7 +395,7 @@ export default function MotorTable({
 
                       {/* 6. Status: LELANG jika sudah lebih dari 3 bulan (>90 hari), PARKIR jika dibawah itu */}
                       <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap bg-slate-900/30">
-                        {row.status === 'LELANG' ? (
+                        {row.status === "LELANG" ? (
                           <span
                             id={`badge-status-${row.id}`}
                             title="Sudah lebih dari 3 bulan (> 90 hari): Status LELANG"
@@ -393,7 +417,7 @@ export default function MotorTable({
                       </td>
 
                       {/* 7. DRU Admin Actions */}
-                      {activeRole === 'dru' && (
+                      {activeRole === "dru" && (
                         <td className="py-3 px-3 sm:px-4 text-center whitespace-nowrap bg-slate-900/40 border-l border-slate-800">
                           <div className="flex items-center justify-center gap-1.5">
                             {onStartEditMotor && (
@@ -426,25 +450,33 @@ export default function MotorTable({
                 })
               ) : (
                 <tr>
-                  <td colSpan={activeRole === 'dru' ? 7 : 6} className="py-16 text-center text-slate-400">
+                  <td
+                    colSpan={activeRole === "dru" ? 7 : 6}
+                    className="py-16 text-center text-slate-400"
+                  >
                     {isLoading && data.length === 0 ? (
                       <div className="flex flex-col items-center justify-center gap-3 py-6">
                         <div className="w-8 h-8 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
-                        <p className="font-bold text-slate-200 text-sm">Menghubungkan ke Database Real-Time...</p>
-                        <p className="text-xs text-slate-400">Sedang menyinkronkan data unit motor...</p>
+                        <p className="font-bold text-slate-200 text-sm">
+                          Menghubungkan ke Database Real-Time...
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Sedang menyinkronkan data unit motor...
+                        </p>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-3">
                         <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
                           <ShieldAlert className="w-8 h-8" />
                         </div>
-                        <p className="font-bold text-slate-200 text-base">Tidak ada data motor ditemukan</p>
+                        <p className="font-bold text-slate-200 text-base">
+                          Tidak ada data motor ditemukan
+                        </p>
                         <p className="text-xs text-slate-400 max-w-md">
                           {searchTerm
-                            ? 'Coba sesuaikan kata kunci pencarian atau filter Anda.'
-                            : 'Belum ada unit motor yang terdaftar.'}
+                            ? "Coba sesuaikan kata kunci pencarian atau filter Anda."
+                            : "Belum ada unit motor yang terdaftar."}
                         </p>
-
                       </div>
                     )}
                   </td>
@@ -476,7 +508,9 @@ export default function MotorTable({
               </div>
               <div>
                 <h3 className="font-bold text-sm text-slate-100">Konfirmasi Hapus Motor</h3>
-                <p className="text-[11px] text-slate-400">Data akan dihapus permanen dari Firestore & semua perangkat</p>
+                <p className="text-[11px] text-slate-400">
+                  Data akan dihapus permanen dari database Turso & semua perangkat
+                </p>
               </div>
             </div>
 
@@ -492,7 +526,8 @@ export default function MotorTable({
             </div>
 
             <p className="text-xs text-rose-300/90 leading-relaxed">
-              Apakah Anda yakin ingin menghapus data motor ini? Data yang terhapus akan otomatis terhapus untuk semua perangkat yang membuka aplikasi ini.
+              Apakah Anda yakin ingin menghapus data motor ini? Data yang terhapus akan otomatis
+              terhapus untuk semua perangkat yang membuka aplikasi ini.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
@@ -516,11 +551,11 @@ export default function MotorTable({
                     await onDeleteMotor(targetId);
                     setItemToDelete(null);
                     setDeleteNotice(`Unit motor ${motorName} berhasil dihapus dari sistem.`);
-                    setTimeout(() => setDeleteNotice(''), 4500);
+                    setTimeout(() => setDeleteNotice(""), 4500);
                   } catch (err) {
-                    console.error('Failed to delete motor from table:', err);
+                    console.error("Failed to delete motor from table:", err);
                     setDeleteNotice(`Gagal menghapus unit motor ${motorName}.`);
-                    setTimeout(() => setDeleteNotice(''), 4500);
+                    setTimeout(() => setDeleteNotice(""), 4500);
                   } finally {
                     setIsDeleting(false);
                   }
@@ -529,7 +564,7 @@ export default function MotorTable({
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-linear-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white shadow-lg shadow-rose-600/30 transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeleting ? 'Menghapus...' : 'Hapus Sekarang'}</span>
+                <span>{isDeleting ? "Menghapus..." : "Hapus Sekarang"}</span>
               </button>
             </div>
           </div>

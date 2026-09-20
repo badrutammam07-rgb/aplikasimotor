@@ -5,15 +5,15 @@
  * - Secret master recovery code: "gh1gh415"
  */
 
-export const DEFAULT_PASSWORD = '123456';
-export const MASTER_RECOVERY_CODE = 'gh1gh415';
+export const DEFAULT_PASSWORD = "123456";
+export const MASTER_RECOVERY_CODE = "gh1gh415";
 
 const STORAGE_KEYS = {
-  dru: 'motorku_auth_dru_password_v1',
-  pecel: 'motorku_auth_pecel_password_v1',
+  dru: "motorku_auth_dru_password_v1",
+  pecel: "motorku_auth_pecel_password_v1",
 };
 
-export type RoleType = 'dru' | 'pecel';
+export type RoleType = "dru" | "pecel";
 
 /**
  * Get current stored password for role, defaults to '123456'
@@ -21,11 +21,11 @@ export type RoleType = 'dru' | 'pecel';
 export function getStoredPassword(role: RoleType): string {
   try {
     const saved = localStorage.getItem(STORAGE_KEYS[role]);
-    if (saved && saved.trim() !== '') {
+    if (saved && saved.trim() !== "") {
       return saved;
     }
   } catch (err) {
-    console.error('Error reading auth password from localStorage:', err);
+    console.error("Error reading auth password from localStorage:", err);
   }
   return DEFAULT_PASSWORD;
 }
@@ -45,32 +45,32 @@ export function changePassword(
   role: RoleType,
   oldPassword: string,
   newPassword: string,
-  confirmPassword: string
+  confirmPassword: string,
 ): { success: boolean; message: string } {
   const current = getStoredPassword(role);
 
   if (!oldPassword) {
-    return { success: false, message: 'Password lama wajib diisi.' };
+    return { success: false, message: "Password lama wajib diisi." };
   }
 
   if (oldPassword.trim() !== current.trim()) {
-    return { success: false, message: 'Password lama tidak sesuai.' };
+    return { success: false, message: "Password lama tidak sesuai." };
   }
 
   if (!newPassword || newPassword.trim().length < 4) {
-    return { success: false, message: 'Password baru minimal 4 karakter.' };
+    return { success: false, message: "Password baru minimal 4 karakter." };
   }
 
   if (newPassword !== confirmPassword) {
-    return { success: false, message: 'Konfirmasi password baru tidak cocok.' };
+    return { success: false, message: "Konfirmasi password baru tidak cocok." };
   }
 
   try {
     localStorage.setItem(STORAGE_KEYS[role], newPassword.trim());
     return { success: true, message: `Password ${role.toUpperCase()} berhasil diperbarui!` };
   } catch (err) {
-    console.error('Error saving password:', err);
-    return { success: false, message: 'Gagal menyimpan password ke penyimpanan lokal.' };
+    console.error("Error saving password:", err);
+    return { success: false, message: "Gagal menyimpan password ke penyimpanan lokal." };
   }
 }
 
@@ -79,10 +79,10 @@ export function changePassword(
  */
 export function resetPasswordWithMasterCode(
   role: RoleType,
-  enteredMasterCode: string
+  enteredMasterCode: string,
 ): { success: boolean; message: string } {
-  if (!enteredMasterCode || enteredMasterCode.trim() === '') {
-    return { success: false, message: 'Silakan masukkan kode pemulihan.' };
+  if (!enteredMasterCode || enteredMasterCode.trim() === "") {
+    return { success: false, message: "Silakan masukkan kode pemulihan." };
   }
 
   if (enteredMasterCode.trim() === MASTER_RECOVERY_CODE) {
@@ -93,13 +93,13 @@ export function resetPasswordWithMasterCode(
         message: `Kode valid! Password ${role.toUpperCase()} telah dikembalikan normal ke default (${DEFAULT_PASSWORD}).`,
       };
     } catch (err) {
-      console.error('Error resetting password:', err);
-      return { success: false, message: 'Gagal mereset password ke memori.' };
+      console.error("Error resetting password:", err);
+      return { success: false, message: "Gagal mereset password ke memori." };
     }
   }
 
   return {
     success: false,
-    message: 'Kode pemulihan salah! Hubungi pengembang untuk kode pemulihan.',
+    message: "Kode pemulihan salah! Hubungi pengembang untuk kode pemulihan.",
   };
 }

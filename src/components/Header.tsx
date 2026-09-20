@@ -1,10 +1,10 @@
-import React, { useRef } from 'react';
-import { Bike, Sparkles, ShieldCheck, LogOut, Home } from 'lucide-react';
-import { AppConfig } from '../types';
+import React, { useRef } from "react";
+import { Bike, Sparkles, ShieldCheck, LogOut, Home } from "lucide-react";
+import { AppConfig } from "../types";
 
 interface HeaderProps {
   config: AppConfig;
-  activeRole: 'guest' | 'dru';
+  activeRole: "guest" | "dru";
   onOpenPortalDoors: () => void;
   onOpenDruPanel: () => void;
   onLogout: () => void;
@@ -17,7 +17,7 @@ export default function Header({
   onOpenPortalDoors,
   onOpenDruPanel,
   onLogout,
-  onGoHome
+  onGoHome,
 }: HeaderProps) {
   // Hidden access: tap the logo 3 times to reveal the DRU login
   const tapCount = useRef(0);
@@ -65,11 +65,14 @@ export default function Header({
                 referrerPolicy="no-referrer"
                 className="h-full w-full object-contain p-1.5 pointer-events-none"
                 onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+                  (e.target as HTMLElement).style.display = "none";
                 }}
               />
             ) : (
-              <div id="header-default-logo" className="flex flex-col items-center justify-center text-amber-400 relative pointer-events-none">
+              <div
+                id="header-default-logo"
+                className="flex flex-col items-center justify-center text-amber-400 relative pointer-events-none"
+              >
                 <Bike className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]" />
                 <Sparkles className="w-2.5 h-2.5 text-amber-300 absolute -top-1 -right-1 animate-pulse" />
               </div>
@@ -79,7 +82,7 @@ export default function Header({
 
           <div
             onClick={onGoHome}
-            className={`flex flex-col leading-none ${onGoHome ? 'cursor-pointer select-none' : ''}`}
+            className={`flex flex-col leading-none ${onGoHome ? "cursor-pointer select-none" : ""}`}
           >
             <h1
               id="app-title"
@@ -104,7 +107,7 @@ export default function Header({
 
         {/* Right: hanya tampil setelah login DRU */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {activeRole === 'dru' && (
+          {activeRole === "dru" && (
             <>
               {onGoHome && (
                 <button

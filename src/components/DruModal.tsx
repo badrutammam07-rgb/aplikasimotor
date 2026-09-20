@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import {
   X,
   Upload,
@@ -31,12 +31,21 @@ import {
   Send,
   ArrowLeft,
   Home,
-  RefreshCw
-} from 'lucide-react';
-import { MotorRecord, AppConfig, KepemilikanType } from '../types';
-import { calculateElapsedDays, formatElapsedDays, formatRupiah, getLunasRemainingDays } from '../data/initialData';
-import { changePassword, DEFAULT_PASSWORD } from '../utils/auth';
-import LogoCropModal from './LogoCropModal';
+  RefreshCw,
+  Database,
+} from "lucide-react";
+import { MotorRecord, AppConfig, KepemilikanType } from "../types";
+import {
+  calculateElapsedDays,
+  formatElapsedDays,
+  formatRupiah,
+  getLunasRemainingDays,
+} from "../data/initialData";
+import { changePassword, DEFAULT_PASSWORD } from "../utils/auth";
+import { getTursoConfig, saveTursoConfig, testTursoConnection } from "../lib/turso";
+import { fetchMotorsFromTurso, fetchConfigFromTurso } from "../services/motorService";
+import LogoCropModal from "./LogoCropModal";
+import DashboardGabungan from "./DashboardGabungan";
 
 interface DruModalProps {
   isOpen: boolean;
@@ -45,7 +54,7 @@ interface DruModalProps {
   config: AppConfig;
   onUpdateLogo: (logoUrl: string | null) => Promise<void> | void;
   motorData: MotorRecord[];
-  onAddMotor: (newRecord: Omit<MotorRecord, 'id'>) => Promise<void> | void;
+  onAddMotor: (newRecord: Omit<MotorRecord, "id">) => Promise<void> | void;
   onUpdateMotor: (id: string, updatedRecord: Partial<MotorRecord>) => Promise<void> | void;
   onDeleteMotor: (id: string) => Promise<void> | void;
   onResetMotorData: () => void;
@@ -54,7 +63,14 @@ interface DruModalProps {
   initialEditingId?: string | null;
 }
 
-type DruTab = 'dashboard_pecel' | 'dashboard_mamah' | 'dashboard_pribadi' | 'input_data' | 'logo' | 'pengaturan';
+type DruTab =
+  | "dashboard_gabungan"
+  | "dashboard_pecel"
+  | "dashboard_mamah"
+  | "dashboard_pribadi"
+  | "input_data"
+  | "logo"
+  | "pengaturan";
 
 interface ManualPemasukanCellProps {
   motorId: string;
@@ -65,29 +81,31 @@ interface ManualPemasukanCellProps {
 const ManualPemasukanCell: React.FC<ManualPemasukanCellProps> = ({
   motorId,
   currentPemasukan = 0,
-  onSave
+  onSave,
 }) => {
-  const [val, setVal] = useState<string>(currentPemasukan > 0 ? currentPemasukan.toLocaleString('id-ID') : '');
+  const [val, setVal] = useState<string>(
+    currentPemasukan > 0 ? currentPemasukan.toLocaleString("id-ID") : "",
+  );
   const [isSaved, setIsSaved] = useState(false);
 
   // Sync state if currentPemasukan changes externally
   React.useEffect(() => {
-    setVal(currentPemasukan > 0 ? currentPemasukan.toLocaleString('id-ID') : '');
+    setVal(currentPemasukan > 0 ? currentPemasukan.toLocaleString("id-ID") : "");
   }, [currentPemasukan]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
+    const raw = e.target.value.replace(/[^0-9]/g, "");
     if (!raw) {
-      setVal('');
+      setVal("");
     } else {
       const num = parseInt(raw, 10);
-      setVal(num.toLocaleString('id-ID'));
+      setVal(num.toLocaleString("id-ID"));
     }
     setIsSaved(false);
   };
 
   const handleSave = () => {
-    const cleanNum = parseInt(val.replace(/[^0-9]/g, ''), 10) || 0;
+    const cleanNum = parseInt(val.replace(/[^0-9]/g, ""), 10) || 0;
     onSave(motorId, cleanNum);
     setIsSaved(true);
     setTimeout(() => {
@@ -96,7 +114,7 @@ const ManualPemasukanCell: React.FC<ManualPemasukanCellProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSave();
     }
@@ -124,14 +142,12 @@ const ManualPemasukanCell: React.FC<ManualPemasukanCellProps> = ({
           type="button"
           onClick={handleSave}
           className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 active:scale-95 shadow-xs whitespace-nowrap ${
-            isSaved
-              ? 'bg-emerald-600 text-white'
-              : 'bg-teal-600 hover:bg-teal-500 text-white'
+            isSaved ? "bg-emerald-600 text-white" : "bg-teal-600 hover:bg-teal-500 text-white"
           }`}
           title="Simpan pemasukan ke motor ini"
         >
           <Check className="w-3 h-3" />
-          <span>{isSaved ? 'Tersimpan' : 'Simpan'}</span>
+          <span>{isSaved ? "Tersimpan" : "Simpan"}</span>
         </button>
       </div>
       {currentPemasukan > 0 && !isSaved && (
@@ -156,19 +172,19 @@ export default function DruModal({
   onResetMotorData,
   onToggleLunas,
   onSendPemasukanToPecel,
-  initialEditingId
+  initialEditingId,
 }: DruModalProps) {
   // Default to the first requested dashboard: MOTOR PECEL
-  const [activeTab, setActiveTab] = useState<DruTab>('dashboard_pecel');
+  const [activeTab, setActiveTab] = useState<DruTab>("dashboard_pecel");
 
   // Search filter inside active dashboard
-  const [dashboardSearch, setDashboardSearch] = useState('');
+  const [dashboardSearch, setDashboardSearch] = useState("");
 
   // State for Sending Nominal Pemasukan to Pecel (Logo Kirim disebelah tong sampah)
   const [itemToSendPecel, setItemToSendPecel] = useState<MotorRecord | null>(null);
   const [sendPemasukanAmount, setSendPemasukanAmount] = useState<number>(500000);
-  const [sendPemasukanNotes, setSendPemasukanNotes] = useState<string>('');
-  const [sendSuccessToast, setSendSuccessToast] = useState<string>('');
+  const [sendPemasukanNotes, setSendPemasukanNotes] = useState<string>("");
+  const [sendSuccessToast, setSendSuccessToast] = useState<string>("");
 
   // Handler Logout otomatis dan kembali ke halaman utama yang public
   const handleExitAndLogout = () => {
@@ -182,7 +198,7 @@ export default function DruModal({
   const handleOpenSendPecel = (item: MotorRecord) => {
     setItemToSendPecel(item);
     setSendPemasukanAmount(item.nominalKirimPecel || item.nominal || item.pemasukan || 500000);
-    setSendPemasukanNotes(item.catatanKirimPecel || '');
+    setSendPemasukanNotes(item.catatanKirimPecel || "");
   };
 
   const handleExecuteSendPecel = (e: React.FormEvent) => {
@@ -197,58 +213,60 @@ export default function DruModal({
     } else {
       onUpdateMotor(itemToSendPecel.id, {
         nominalKirimPecel: amount,
-        statusKirimPecel: 'terkirim',
-        tanggalKirimPecel: new Date().toISOString().split('T')[0],
+        statusKirimPecel: "terkirim",
+        tanggalKirimPecel: new Date().toISOString().split("T")[0],
         catatanKirimPecel: sendPemasukanNotes,
-        pemasukanConfirmedByPecel: false
+        pemasukanConfirmedByPecel: false,
       });
     }
 
-    setSendSuccessToast(`Nominal pemasukan ${formatRupiah(amount)} untuk ${itemToSendPecel.motor} (${itemToSendPecel.nopol}) berhasil dikirim ke Halaman Pecel!`);
+    setSendSuccessToast(
+      `Nominal pemasukan ${formatRupiah(amount)} untuk ${itemToSendPecel.motor} (${itemToSendPecel.nopol}) berhasil dikirim ke Halaman Pecel!`,
+    );
     setItemToSendPecel(null);
 
     setTimeout(() => {
-      setSendSuccessToast('');
+      setSendSuccessToast("");
     }, 4500);
   };
 
   // Form State for Adding/Editing Record
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formTanggal, setFormTanggal] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString().split("T")[0];
   });
   const [formHari, setFormHari] = useState<string>(() => {
-    return formatElapsedDays(new Date().toISOString().split('T')[0]);
+    return formatElapsedDays(new Date().toISOString().split("T")[0]);
   });
-  const [formMotor, setFormMotor] = useState<string>('');
+  const [formMotor, setFormMotor] = useState<string>("");
   const [formTahun, setFormTahun] = useState<number | string>(new Date().getFullYear());
-  const [formNopol, setFormNopol] = useState<string>('');
-  const [formNominal, setFormNominal] = useState<number | string>('');
-  const [formPemasukan, setFormPemasukan] = useState<number | string>('');
-  const [formJasaParkir, setFormJasaParkir] = useState<number | string>('');
-  const [formKepemilikan, setFormKepemilikan] = useState<KepemilikanType>('pecel');
+  const [formNopol, setFormNopol] = useState<string>("");
+  const [formNominal, setFormNominal] = useState<number | string>("");
+  const [formPemasukan, setFormPemasukan] = useState<number | string>("");
+  const [formJasaParkir, setFormJasaParkir] = useState<number | string>("");
+  const [formKepemilikan, setFormKepemilikan] = useState<KepemilikanType>("pecel");
   const [formLunas, setFormLunas] = useState<boolean>(false);
-  const [formCatatan, setFormCatatan] = useState<string>('');
-  const [formError, setFormError] = useState<string>('');
-  const [formSuccess, setFormSuccess] = useState<string>('');
+  const [formCatatan, setFormCatatan] = useState<string>("");
+  const [formError, setFormError] = useState<string>("");
+  const [formSuccess, setFormSuccess] = useState<string>("");
 
   // Delete Confirmation State (Bypasses window.confirm for iframe safety)
   const [itemToDelete, setItemToDelete] = useState<MotorRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [deleteNotice, setDeleteNotice] = useState<string>('');
+  const [deleteNotice, setDeleteNotice] = useState<string>("");
 
   // Logo input state
-  const [customLogoUrl, setCustomLogoUrl] = useState<string>(config.logoUrl || '');
-  const [logoMessage, setLogoMessage] = useState<string>('');
+  const [customLogoUrl, setCustomLogoUrl] = useState<string>(config.logoUrl || "");
+  const [logoMessage, setLogoMessage] = useState<string>("");
   const [isSavingLogo, setIsSavingLogo] = useState<boolean>(false);
   const [isCropModalOpen, setIsCropModalOpen] = useState<boolean>(false);
-  const [imageToCrop, setImageToCrop] = useState<string>('');
+  const [imageToCrop, setImageToCrop] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync logo when updated from Firestore on any device
+  // Sync logo when updated from Turso database on any device
   useEffect(() => {
     if (config?.logoUrl !== undefined) {
-      setCustomLogoUrl(config.logoUrl || '');
+      setCustomLogoUrl(config.logoUrl || "");
     }
   }, [config?.logoUrl, isOpen]);
 
@@ -263,42 +281,83 @@ export default function DruModal({
   }, [initialEditingId, isOpen, motorData]);
 
   // Change Password State for DRU
-  const [druOldPassword, setDruOldPassword] = useState('');
-  const [druNewPassword, setDruNewPassword] = useState('');
-  const [druConfirmPassword, setDruConfirmPassword] = useState('');
+  const [druOldPassword, setDruOldPassword] = useState("");
+  const [druNewPassword, setDruNewPassword] = useState("");
+  const [druConfirmPassword, setDruConfirmPassword] = useState("");
   const [showDruOldPass, setShowDruOldPass] = useState(false);
   const [showDruNewPass, setShowDruNewPass] = useState(false);
   const [showDruConfirmPass, setShowDruConfirmPass] = useState(false);
-  const [druPassError, setDruPassError] = useState('');
-  const [druPassSuccess, setDruPassSuccess] = useState('');
+  const [druPassError, setDruPassError] = useState("");
+  const [druPassSuccess, setDruPassSuccess] = useState("");
 
   const handleChangeDruPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    setDruPassError('');
-    setDruPassSuccess('');
+    setDruPassError("");
+    setDruPassSuccess("");
 
-    const res = changePassword('dru', druOldPassword, druNewPassword, druConfirmPassword);
+    const res = changePassword("dru", druOldPassword, druNewPassword, druConfirmPassword);
     if (res.success) {
       setDruPassSuccess(res.message);
-      setDruOldPassword('');
-      setDruNewPassword('');
-      setDruConfirmPassword('');
+      setDruOldPassword("");
+      setDruNewPassword("");
+      setDruConfirmPassword("");
     } else {
       setDruPassError(res.message);
     }
   };
 
+  // Turso Database State
+  const [tursoUrl, setTursoUrl] = useState(() => getTursoConfig()?.url || "");
+  const [tursoToken, setTursoToken] = useState(() => getTursoConfig()?.authToken || "");
+  const [tursoStatus, setTursoStatus] = useState<{ connected: boolean; message: string } | null>(
+    null,
+  );
+  const [isTestingTurso, setIsTestingTurso] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && activeTab === "pengaturan") {
+      const cfg = getTursoConfig();
+      if (cfg?.url) setTursoUrl(cfg.url);
+      if (cfg?.authToken) setTursoToken(cfg.authToken);
+      testTursoConnection().then((res) => {
+        setTursoStatus(res);
+      });
+    }
+  }, [isOpen, activeTab]);
+
+  const handleSaveAndTestTurso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsTestingTurso(true);
+    setTursoStatus(null);
+    try {
+      saveTursoConfig(tursoUrl, tursoToken);
+      const res = await testTursoConnection();
+      setTursoStatus(res);
+      if (res.connected) {
+        fetchMotorsFromTurso();
+        fetchConfigFromTurso();
+      }
+    } catch (err: unknown) {
+      setTursoStatus({
+        connected: false,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsTestingTurso(false);
+    }
+  };
+
   // Group motors by ownership for the 3 distinct dashboards
   const pecelMotors = useMemo(() => {
-    return motorData.filter((m) => (m.kepemilikan || 'pecel') === 'pecel');
+    return motorData.filter((m) => (m.kepemilikan || "pecel") === "pecel");
   }, [motorData]);
 
   const mamahMotors = useMemo(() => {
-    return motorData.filter((m) => m.kepemilikan === 'mamah');
+    return motorData.filter((m) => m.kepemilikan === "mamah");
   }, [motorData]);
 
   const pribadiMotors = useMemo(() => {
-    return motorData.filter((m) => m.kepemilikan === 'pribadi');
+    return motorData.filter((m) => m.kepemilikan === "pribadi");
   }, [motorData]);
 
   // Financial metrics for each dashboard
@@ -306,7 +365,10 @@ export default function DruModal({
     const count = records.length;
     const totalNominal = records.reduce((acc, curr) => acc + (Number(curr.nominal) || 0), 0);
     const totalPemasukan = records.reduce((acc, curr) => acc + (Number(curr.pemasukan) || 0), 0);
-    const totalJasaParkir = records.reduce((acc, curr) => acc + (Number(curr.jasaParkir ?? curr.tarifJasa) || 0), 0);
+    const totalJasaParkir = records.reduce(
+      (acc, curr) => acc + (Number(curr.jasaParkir ?? curr.tarifJasa) || 0),
+      0,
+    );
     return { count, totalNominal, totalPemasukan, totalJasaParkir };
   };
 
@@ -330,15 +392,15 @@ export default function DruModal({
     setFormMotor(record.motor);
     setFormTahun(record.tahun);
     setFormNopol(record.nopol);
-    setFormNominal(record.nominal !== undefined ? record.nominal : '');
-    setFormPemasukan(record.pemasukan !== undefined ? record.pemasukan : '');
-    setFormJasaParkir(record.jasaParkir !== undefined ? record.jasaParkir : record.tarifJasa || '');
-    setFormKepemilikan(record.kepemilikan || 'pecel');
+    setFormNominal(record.nominal !== undefined ? record.nominal : "");
+    setFormPemasukan(record.pemasukan !== undefined ? record.pemasukan : "");
+    setFormJasaParkir(record.jasaParkir !== undefined ? record.jasaParkir : record.tarifJasa || "");
+    setFormKepemilikan(record.kepemilikan || "pecel");
     setFormLunas(!!record.lunas);
-    setFormCatatan(record.catatan || '');
-    setFormError('');
-    setFormSuccess('');
-    setActiveTab('input_data');
+    setFormCatatan(record.catatan || "");
+    setFormError("");
+    setFormSuccess("");
+    setActiveTab("input_data");
   };
 
   const handleCancelEdit = () => {
@@ -347,61 +409,52 @@ export default function DruModal({
   };
 
   const resetFormFields = (preselectKepemilikan?: KepemilikanType) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     setFormTanggal(today);
     setFormHari(formatElapsedDays(today));
-    setFormMotor('');
+    setFormMotor("");
     setFormTahun(new Date().getFullYear());
-    setFormNopol('');
-    setFormNominal('');
-    setFormPemasukan('');
-    setFormJasaParkir('');
-    setFormKepemilikan(preselectKepemilikan || 'pecel');
+    setFormNopol("");
+    setFormNominal("");
+    setFormPemasukan("");
+    setFormJasaParkir("");
+    setFormKepemilikan(preselectKepemilikan || "pecel");
     setFormLunas(false);
-    setFormCatatan('');
+    setFormCatatan("");
   };
 
   const handleOpenAddWithOwnership = (type: KepemilikanType) => {
     setEditingId(null);
     resetFormFields(type);
-    setActiveTab('input_data');
+    setActiveTab("input_data");
   };
 
   const handleSaveMotor = (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
+    setFormError("");
+    setFormSuccess("");
 
     if (!formTanggal) {
-      setFormError('Tanggal masuk motor harus diisi.');
+      setFormError("Tanggal masuk motor harus diisi.");
       return;
     }
     if (!formMotor.trim()) {
-      setFormError('Nama Motor harus diisi.');
+      setFormError("Nama Motor harus diisi.");
       return;
     }
     if (!formNopol.trim()) {
-      setFormError('Nomor Polisi (Nopol) harus diisi.');
+      setFormError("Nomor Polisi (Nopol) harus diisi.");
       return;
     }
 
-    const jasaParkirNum = formJasaParkir !== '' && !isNaN(Number(formJasaParkir)) ? Number(formJasaParkir) : 0;
+    const jasaParkirNum =
+      formJasaParkir !== "" && !isNaN(Number(formJasaParkir)) ? Number(formJasaParkir) : 0;
 
-    if (jasaParkirNum < 15000) {
-      setFormError('Jasa Parkir minimal Rp 15.000.');
-      return;
-    }
-    if (jasaParkirNum % 1000 !== 0) {
-      setFormError('Jasa Parkir harus kelipatan Rp 1.000 (contoh: 15.000, 16.000, 20.000).');
-      return;
-    }
+    const nominalPokokNum =
+      formNominal !== "" && !isNaN(Number(formNominal)) ? Number(formNominal) : 0;
 
-    const nominalPokokNum = formNominal !== '' && !isNaN(Number(formNominal)) ? Number(formNominal) : 0;
-
-    if (!editingId && nominalPokokNum <= 0) {
-      setFormError('Nominal Pokok harus diisi untuk pendaftaran motor baru.');
-      return;
-    }
+    const pemasukanNum =
+      formPemasukan !== "" && !isNaN(Number(formPemasukan)) ? Number(formPemasukan) : 0;
 
     const currentRecord = editingId ? motorData.find((m) => m.id === editingId) : null;
     const payload = {
@@ -410,8 +463,8 @@ export default function DruModal({
       motor: formMotor.trim(),
       tahun: Number(formTahun) || formTahun,
       nopol: formNopol.trim().toUpperCase(),
-      nominal: editingId ? (currentRecord?.nominal || 0) : nominalPokokNum,
-      pemasukan: editingId ? (currentRecord?.pemasukan || 0) : 0,
+      nominal: nominalPokokNum,
+      pemasukan: pemasukanNum,
       jasaParkir: jasaParkirNum,
       tarifJasa: jasaParkirNum,
       pemasukanConfirmedByPecel: editingId ? !!currentRecord?.pemasukanConfirmedByPecel : false,
@@ -422,7 +475,7 @@ export default function DruModal({
       kepemilikan: formKepemilikan,
       lunas: editingId ? !!currentRecord?.lunas : false,
       lunasAt: editingId ? currentRecord?.lunasAt : undefined,
-      catatan: formCatatan.trim()
+      catatan: formCatatan.trim(),
     };
 
     if (editingId) {
@@ -440,16 +493,17 @@ export default function DruModal({
   // Handle Logo Update
   const handleSaveLogoUrl = async () => {
     setIsSavingLogo(true);
-    setLogoMessage('Sedang menyimpan logo ke database...');
+    setLogoMessage("Sedang menyimpan logo ke database...");
     try {
       await onUpdateLogo(customLogoUrl.trim() || null);
-      setLogoMessage('Logo berhasil disimpan & tersinkronkan ke seluruh perangkat!');
-    } catch (err: any) {
-      console.error('Failed to save logo:', err);
-      setLogoMessage('Gagal menyimpan logo: ' + (err?.message || 'Periksa koneksi'));
+      setLogoMessage("Logo berhasil disimpan & tersinkronkan ke seluruh perangkat!");
+    } catch (err: unknown) {
+      console.error("Failed to save logo:", err);
+      const errMsg = err instanceof Error ? err.message : "Periksa koneksi";
+      setLogoMessage("Gagal menyimpan logo: " + errMsg);
     } finally {
       setIsSavingLogo(false);
-      setTimeout(() => setLogoMessage(''), 4000);
+      setTimeout(() => setLogoMessage(""), 4000);
     }
   };
 
@@ -457,7 +511,7 @@ export default function DruModal({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setLogoMessage('Ukuran file maksimal 5MB.');
+        setLogoMessage("Ukuran file maksimal 5MB.");
         return;
       }
       const reader = new FileReader();
@@ -467,7 +521,7 @@ export default function DruModal({
         setImageToCrop(base64);
         setIsCropModalOpen(true);
         if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+          fileInputRef.current.value = "";
         }
       };
       reader.readAsDataURL(file);
@@ -477,17 +531,18 @@ export default function DruModal({
   const handleSaveCroppedLogo = async (croppedDataUrl: string) => {
     setCustomLogoUrl(croppedDataUrl);
     setIsSavingLogo(true);
-    setLogoMessage('Sedang menyimpan logo cropped ke database...');
+    setLogoMessage("Sedang menyimpan logo cropped ke database...");
     try {
       await onUpdateLogo(croppedDataUrl);
-      setLogoMessage('Logo berhasil disimpan & tersinkronkan ke seluruh perangkat!');
-    } catch (err: any) {
-      console.error('Failed to save cropped logo:', err);
-      setLogoMessage('Gagal menyimpan logo: ' + (err?.message || 'Periksa koneksi'));
+      setLogoMessage("Logo berhasil disimpan & tersinkronkan ke seluruh perangkat!");
+    } catch (err: unknown) {
+      console.error("Failed to save cropped logo:", err);
+      const errMsg = err instanceof Error ? err.message : "Periksa koneksi";
+      setLogoMessage("Gagal menyimpan logo: " + errMsg);
     } finally {
       setIsSavingLogo(false);
       setIsCropModalOpen(false);
-      setTimeout(() => setLogoMessage(''), 4000);
+      setTimeout(() => setLogoMessage(""), 4000);
     }
   };
 
@@ -500,7 +555,7 @@ export default function DruModal({
 
   const handleCropFromUrl = () => {
     if (!customLogoUrl.trim()) {
-      setLogoMessage('Masukkan alamat URL gambar logo terlebih dahulu.');
+      setLogoMessage("Masukkan alamat URL gambar logo terlebih dahulu.");
       return;
     }
     setImageToCrop(customLogoUrl.trim());
@@ -508,26 +563,31 @@ export default function DruModal({
   };
 
   const handleRemoveLogo = async () => {
-    setCustomLogoUrl('');
+    setCustomLogoUrl("");
     setIsSavingLogo(true);
     try {
       await onUpdateLogo(null);
-      setLogoMessage('Logo berhasil dihapus, kembali ke ikon default.');
-    } catch (err: any) {
-      console.error('Failed to remove logo:', err);
-      setLogoMessage('Gagal menghapus logo.');
+      setLogoMessage("Logo berhasil dihapus, kembali ke ikon default.");
+    } catch (err: unknown) {
+      console.error("Failed to remove logo:", err);
+      setLogoMessage("Gagal menghapus logo.");
     } finally {
       setIsSavingLogo(false);
-      setTimeout(() => setLogoMessage(''), 3000);
+      setTimeout(() => setLogoMessage(""), 3000);
     }
   };
 
   // Helper renderer for Dashboard Table
   const renderDashboardTable = (
     records: MotorRecord[],
-    dashboardType: 'pecel' | 'mamah' | 'pribadi',
+    dashboardType: "pecel" | "mamah" | "pribadi",
     title: string,
-    metrics: { count: number; totalNominal: number; totalPemasukan: number; totalJasaParkir: number }
+    metrics: {
+      count: number;
+      totalNominal: number;
+      totalPemasukan: number;
+      totalJasaParkir: number;
+    },
   ) => {
     const filteredRecords = records.filter((item) => {
       const q = dashboardSearch.toLowerCase();
@@ -539,20 +599,20 @@ export default function DruModal({
       );
     });
 
-    const isPecel = dashboardType === 'pecel';
-    const isMamah = dashboardType === 'mamah';
+    const isPecel = dashboardType === "pecel";
+    const isMamah = dashboardType === "mamah";
 
     const themeBorder = isPecel
-      ? 'border-teal-500/30'
+      ? "border-teal-500/30"
       : isMamah
-      ? 'border-purple-500/30'
-      : 'border-amber-500/30';
+        ? "border-purple-500/30"
+        : "border-amber-500/30";
 
     const themeBadge = isPecel
-      ? 'bg-teal-500/15 border-teal-500/30 text-teal-300'
+      ? "bg-teal-500/15 border-teal-500/30 text-teal-300"
       : isMamah
-      ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-      : 'bg-amber-500/15 border-amber-500/30 text-amber-300';
+        ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
+        : "bg-amber-500/15 border-amber-500/30 text-amber-300";
 
     return (
       <div className="space-y-5">
@@ -564,7 +624,7 @@ export default function DruModal({
               <span className="font-semibold">{deleteNotice}</span>
             </div>
             <button
-              onClick={() => setDeleteNotice('')}
+              onClick={() => setDeleteNotice("")}
               className="text-slate-400 hover:text-white p-1 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
@@ -573,7 +633,9 @@ export default function DruModal({
         )}
 
         {/* Tombol Tambah & Navigasi */}
-        <div className={`p-4 rounded-2xl bg-slate-950/80 border ${themeBorder} flex flex-wrap items-center justify-end gap-3 shadow-lg`}>
+        <div
+          className={`p-4 rounded-2xl bg-slate-950/80 border ${themeBorder} flex flex-wrap items-center justify-end gap-3 shadow-lg`}
+        >
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -590,7 +652,14 @@ export default function DruModal({
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold shadow-md shadow-amber-500/20 transition cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Tambah Motor {dashboardType === 'pecel' ? 'Pecel' : dashboardType === 'mamah' ? 'Mamah' : 'Pribadi'}</span>
+              <span>
+                Tambah Motor{" "}
+                {dashboardType === "pecel"
+                  ? "Pecel"
+                  : dashboardType === "mamah"
+                    ? "Mamah"
+                    : "Pribadi"}
+              </span>
             </button>
           </div>
         </div>
@@ -625,10 +694,7 @@ export default function DruModal({
             <span className="text-sm sm:text-base font-bold text-teal-300 font-mono mt-1 block truncate">
               {formatRupiah(metrics.totalPemasukan)}
             </span>
-            <span className="text-[10px] text-teal-400/80 block mt-0.5">
-              * Input manual DRU
-            </span>
-
+            <span className="text-[10px] text-teal-400/80 block mt-0.5">* Input manual DRU</span>
           </div>
 
           <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 shadow-md">
@@ -689,7 +755,8 @@ export default function DruModal({
                     const elapsed = calculateElapsedDays(item.tanggal);
                     const daysDisplay = formatElapsedDays(item.tanggal);
                     const isPecelConfirmed = isPecel && item.pemasukanConfirmedByPecel;
-                    const parkirVal = item.jasaParkir !== undefined ? item.jasaParkir : item.tarifJasa || 0;
+                    const parkirVal =
+                      item.jasaParkir !== undefined ? item.jasaParkir : item.tarifJasa || 0;
 
                     return (
                       <tr key={item.id} className="hover:bg-slate-900/60 transition group">
@@ -736,7 +803,6 @@ export default function DruModal({
                           />
                         </td>
 
-
                         {/* 8. Jasa Parkir (Tambahan - Hanya DRU yang tahu) */}
                         <td className="py-3 px-3.5 text-right whitespace-nowrap">
                           <span className="font-mono font-bold text-amber-300">
@@ -757,7 +823,11 @@ export default function DruModal({
                               </span>
                               <button
                                 type="button"
-                                onClick={() => onToggleLunas ? onToggleLunas(item.id, false) : onUpdateMotor(item.id, { lunas: false })}
+                                onClick={() =>
+                                  onToggleLunas
+                                    ? onToggleLunas(item.id, false)
+                                    : onUpdateMotor(item.id, { lunas: false })
+                                }
                                 className="text-[9px] text-slate-400 hover:text-amber-300 underline cursor-pointer"
                                 title="Kembalikan motor ke status aktif (akan tampil kembali di halaman utama)"
                               >
@@ -779,7 +849,14 @@ export default function DruModal({
                               )}
                               <button
                                 type="button"
-                                onClick={() => onToggleLunas ? onToggleLunas(item.id, true) : onUpdateMotor(item.id, { lunas: true, lunasAt: new Date().toISOString() })}
+                                onClick={() =>
+                                  onToggleLunas
+                                    ? onToggleLunas(item.id, true)
+                                    : onUpdateMotor(item.id, {
+                                        lunas: true,
+                                        lunasAt: new Date().toISOString(),
+                                      })
+                                }
                                 className="text-[9px] text-emerald-400 hover:text-emerald-300 underline font-medium cursor-pointer"
                                 title="Tandai Lunas (motor akan hilang otomatis 1 minggu setelah lunas)"
                               >
@@ -817,7 +894,8 @@ export default function DruModal({
                 ) : (
                   <tr>
                     <td colSpan={10} className="py-12 text-center text-slate-400">
-                      Tidak ada data unit di {title}. Silakan klik tombol <strong>+ Tambah Motor</strong> di atas.
+                      Tidak ada data unit di {title}. Silakan klik tombol{" "}
+                      <strong>+ Tambah Motor</strong> di atas.
                     </td>
                   </tr>
                 )}
@@ -830,11 +908,11 @@ export default function DruModal({
   };
 
   return (
-    <div 
-      id="modal-dru-overlay" 
+    <div
+      id="modal-dru-overlay"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md"
     >
-      <div 
+      <div
         id="modal-dru-container"
         className="bg-linear-to-b from-slate-900 via-slate-925 to-slate-950 text-slate-100 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] w-full max-w-6xl max-h-[94vh] flex flex-col border border-amber-500/30 overflow-hidden"
       >
@@ -844,21 +922,39 @@ export default function DruModal({
         {/* Header Halaman DRU: dasboard pecel, mamah, pribadi, pengaturan, ubah logo */}
         <div className="bg-slate-950 px-4 sm:px-6 py-2.5 flex items-center justify-between border-b border-slate-800 gap-3">
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1">
-            {/* 1. Dasboard Pecel */}
+            {/* 0. Dashboard Gabungan */}
+            <button
+              id="tab-dashboard-gabungan"
+              type="button"
+              onClick={() => {
+                setActiveTab("dashboard_gabungan");
+                setDashboardSearch("");
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
+                activeTab === "dashboard_gabungan"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-amber-400" />
+              <span>Dashboard Gabungan</span>
+            </button>
+
+            {/* 1. Dashboard Pecel */}
             <button
               id="tab-dashboard-pecel"
               type="button"
               onClick={() => {
-                setActiveTab('dashboard_pecel');
-                setDashboardSearch('');
+                setActiveTab("dashboard_pecel");
+                setDashboardSearch("");
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === 'dashboard_pecel'
-                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+                activeTab === "dashboard_pecel"
+                  ? "bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
               }`}
             >
-              <span>Dasboard Pecel</span>
+              <span>Dashboard Pecel</span>
             </button>
 
             {/* 2. Mamah */}
@@ -866,13 +962,13 @@ export default function DruModal({
               id="tab-dashboard-mamah"
               type="button"
               onClick={() => {
-                setActiveTab('dashboard_mamah');
-                setDashboardSearch('');
+                setActiveTab("dashboard_mamah");
+                setDashboardSearch("");
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === 'dashboard_mamah'
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+                activeTab === "dashboard_mamah"
+                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
               }`}
             >
               <span>Mamah</span>
@@ -883,13 +979,13 @@ export default function DruModal({
               id="tab-dashboard-pribadi"
               type="button"
               onClick={() => {
-                setActiveTab('dashboard_pribadi');
-                setDashboardSearch('');
+                setActiveTab("dashboard_pribadi");
+                setDashboardSearch("");
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === 'dashboard_pribadi'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+                activeTab === "dashboard_pribadi"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
               }`}
             >
               <span>Pribadi</span>
@@ -902,14 +998,14 @@ export default function DruModal({
               id="tab-pengaturan-dru"
               type="button"
               onClick={() => {
-                setActiveTab('pengaturan');
-                setDruPassError('');
-                setDruPassSuccess('');
+                setActiveTab("pengaturan");
+                setDruPassError("");
+                setDruPassSuccess("");
               }}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === 'pengaturan'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+                activeTab === "pengaturan"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
               }`}
             >
               <span>Pengaturan</span>
@@ -919,11 +1015,11 @@ export default function DruModal({
             <button
               id="tab-logo"
               type="button"
-              onClick={() => setActiveTab('logo')}
+              onClick={() => setActiveTab("logo")}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === 'logo'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent'
+                activeTab === "logo"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent"
               }`}
             >
               <span>Ubah Logo</span>
@@ -946,41 +1042,33 @@ export default function DruModal({
 
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-900/60">
+          {/* TAB 0: DASHBOARD GABUNGAN (Pecel, Mamah, Pribadi - View Only) */}
+          {activeTab === "dashboard_gabungan" && (
+            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col min-h-[500px]">
+              <DashboardGabungan data={motorData} onGoHome={handleExitAndLogout} />
+            </div>
+          )}
+
           {/* TAB 1: DASHBOARD PECEL */}
-          {activeTab === 'dashboard_pecel' &&
-            renderDashboardTable(
-              pecelMotors,
-              'pecel',
-              'PECEL',
-              pecelMetrics
-            )}
+          {activeTab === "dashboard_pecel" &&
+            renderDashboardTable(pecelMotors, "pecel", "PECEL", pecelMetrics)}
 
           {/* TAB 2: DASHBOARD MOTOR MAMAH */}
-          {activeTab === 'dashboard_mamah' &&
-            renderDashboardTable(
-              mamahMotors,
-              'mamah',
-              'MAMAH',
-              mamahMetrics
-            )}
+          {activeTab === "dashboard_mamah" &&
+            renderDashboardTable(mamahMotors, "mamah", "MAMAH", mamahMetrics)}
 
           {/* TAB 3: DASHBOARD PRIBADI */}
-          {activeTab === 'dashboard_pribadi' &&
-            renderDashboardTable(
-              pribadiMotors,
-              'pribadi',
-              'PRIBADI',
-              pribadiMetrics
-            )}
+          {activeTab === "dashboard_pribadi" &&
+            renderDashboardTable(pribadiMotors, "pribadi", "PRIBADI", pribadiMetrics)}
 
           {/* TAB 4: FORM INPUT / EDIT DATA MOTOR */}
-          {activeTab === 'input_data' && (
+          {activeTab === "input_data" && (
             <div className="max-w-3xl mx-auto space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
                     <Plus className="w-4 h-4 text-amber-400" />
-                    <span>{editingId ? 'Edit Data Motor' : 'Input Data Motor Baru'}</span>
+                    <span>{editingId ? "Edit Data Motor" : "Input Data Motor Baru"}</span>
                   </h3>
                   <p className="text-xs text-slate-400">
                     Semua motor yang diinput akan otomatis masuk ke tabel halaman utama.
@@ -1005,7 +1093,13 @@ export default function DruModal({
                     id="btn-back-from-form"
                     onClick={() => {
                       handleCancelEdit();
-                      setActiveTab(formKepemilikan === 'mamah' ? 'dashboard_mamah' : formKepemilikan === 'pribadi' ? 'dashboard_pribadi' : 'dashboard_pecel');
+                      setActiveTab(
+                        formKepemilikan === "mamah"
+                          ? "dashboard_mamah"
+                          : formKepemilikan === "pribadi"
+                            ? "dashboard_pribadi"
+                            : "dashboard_pecel",
+                      );
                     }}
                     className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition cursor-pointer border border-slate-700"
                     title="Kembali ke Dashboard Tabel"
@@ -1038,7 +1132,10 @@ export default function DruModal({
                 </div>
               )}
 
-              <form onSubmit={handleSaveMotor} className="bg-slate-950/80 p-6 rounded-2xl border border-slate-800 space-y-5 shadow-xl">
+              <form
+                onSubmit={handleSaveMotor}
+                className="bg-slate-950/80 p-6 rounded-2xl border border-slate-800 space-y-5 shadow-xl"
+              >
                 {/* PILIHAN DASHBOARD KEPEMILIKAN */}
                 <div>
                   <label className="block text-xs font-bold text-amber-300 mb-2 uppercase tracking-wide">
@@ -1047,16 +1144,18 @@ export default function DruModal({
                   <div className="grid grid-cols-3 gap-3">
                     <button
                       type="button"
-                      onClick={() => setFormKepemilikan('pecel')}
+                      onClick={() => setFormKepemilikan("pecel")}
                       className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                        formKepemilikan === 'pecel'
-                          ? 'bg-teal-950/80 border-teal-400 text-teal-200 ring-1 ring-teal-400'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        formKepemilikan === "pecel"
+                          ? "bg-teal-950/80 border-teal-400 text-teal-200 ring-1 ring-teal-400"
+                          : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="font-bold text-xs flex items-center justify-between">
                         <span>MOTOR PECEL</span>
-                        {formKepemilikan === 'pecel' && <Check className="w-3.5 h-3.5 text-teal-400" />}
+                        {formKepemilikan === "pecel" && (
+                          <Check className="w-3.5 h-3.5 text-teal-400" />
+                        )}
                       </div>
                       <p className="text-[10px] mt-1 opacity-80">
                         Masuk ke Halaman Pecel & Halaman Utama.
@@ -1065,16 +1164,18 @@ export default function DruModal({
 
                     <button
                       type="button"
-                      onClick={() => setFormKepemilikan('mamah')}
+                      onClick={() => setFormKepemilikan("mamah")}
                       className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                        formKepemilikan === 'mamah'
-                          ? 'bg-purple-950/80 border-purple-400 text-purple-200 ring-1 ring-purple-400'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        formKepemilikan === "mamah"
+                          ? "bg-purple-950/80 border-purple-400 text-purple-200 ring-1 ring-purple-400"
+                          : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="font-bold text-xs flex items-center justify-between">
                         <span>MOTOR MAMAH</span>
-                        {formKepemilikan === 'mamah' && <Check className="w-3.5 h-3.5 text-purple-400" />}
+                        {formKepemilikan === "mamah" && (
+                          <Check className="w-3.5 h-3.5 text-purple-400" />
+                        )}
                       </div>
                       <p className="text-[10px] mt-1 opacity-80">
                         Dashboard Mamah DRU & Halaman Utama.
@@ -1083,16 +1184,18 @@ export default function DruModal({
 
                     <button
                       type="button"
-                      onClick={() => setFormKepemilikan('pribadi')}
+                      onClick={() => setFormKepemilikan("pribadi")}
                       className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                        formKepemilikan === 'pribadi'
-                          ? 'bg-amber-950/80 border-amber-400 text-amber-200 ring-1 ring-amber-400'
-                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        formKepemilikan === "pribadi"
+                          ? "bg-amber-950/80 border-amber-400 text-amber-200 ring-1 ring-amber-400"
+                          : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="font-bold text-xs flex items-center justify-between">
                         <span>PRIBADI</span>
-                        {formKepemilikan === 'pribadi' && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                        {formKepemilikan === "pribadi" && (
+                          <Check className="w-3.5 h-3.5 text-amber-400" />
+                        )}
                       </div>
                       <p className="text-[10px] mt-1 opacity-80">
                         Dashboard Pribadi DRU & Halaman Utama.
@@ -1166,57 +1269,87 @@ export default function DruModal({
                     />
                   </div>
 
-                  {/* 5. Nominal Pokok (hanya saat pendaftaran motor baru) */}
-                  {!editingId && (
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Nominal Pokok (Rp):</span>
-                        </div>
-                        <span className="text-[11px] text-emerald-400 font-mono font-bold">
-                          {formNominal !== '' && !isNaN(Number(formNominal)) ? formatRupiah(Number(formNominal)) : ''}
-                        </span>
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="Contoh: 3000000"
-                        value={formNominal}
-                        onChange={(e) => setFormNominal(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-emerald-400 rounded-xl text-slate-100 text-xs focus:outline-none"
-                      />
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        * Nominal pokok langsung tersimpan tanpa perlu konfirmasi Pecel. Konfirmasi Pecel hanya diperlukan saat ada pemasukan pembayaran baru.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* 6. Jasa Parkir */}
-                  <div className="sm:col-span-2">
+                  {/* 5. Nominal Pokok Motor (Admin dapat merubah nominal apapun) */}
+                  <div className="sm:col-span-1">
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
                       <div className="flex items-center gap-1">
-                        <ParkingMeter className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Jasa Parkir (Rp):</span>
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Nominal Pokok (Rp):</span>
                       </div>
-                      <span className="text-[11px] text-amber-400 font-mono font-bold">
-                        {formJasaParkir !== '' && !isNaN(Number(formJasaParkir)) ? formatRupiah(Number(formJasaParkir)) : ''}
+                      <span className="text-[11px] text-emerald-400 font-mono font-bold">
+                        {formNominal !== "" && !isNaN(Number(formNominal))
+                          ? formatRupiah(Number(formNominal))
+                          : ""}
                       </span>
                     </label>
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Minimal 15000, kelipatan 1000"
-                      value={formJasaParkir}
-                      onChange={(e) => setFormJasaParkir(e.target.value.replace(/[^0-9]/g, ''))}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl text-slate-100 text-xs focus:outline-none"
+                      placeholder="Contoh: 15000000"
+                      value={formNominal}
+                      onChange={(e) => setFormNominal(e.target.value.replace(/[^0-9]/g, ""))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-emerald-400 rounded-xl text-slate-100 text-xs focus:outline-none font-mono"
                     />
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      * Minimal Rp 15.000 dan harus kelipatan Rp 1.000. Hanya DRU yang dapat melihat nilai ini.
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      * Nominal pokok / pinjaman unit motor (dapat diubah bebas oleh Admin).
                     </p>
                   </div>
 
-                  {/* 7. Catatan Unit (Opsional, dapat dihapus/dikosongkan) */}
+                  {/* 6. Pemasukan (Admin dapat merubah nominal apapun) */}
+                  <div className="sm:col-span-1">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="w-3.5 h-3.5 text-teal-400" />
+                        <span>Nominal Pemasukan (Rp):</span>
+                      </div>
+                      <span className="text-[11px] text-teal-300 font-mono font-bold">
+                        {formPemasukan !== "" && !isNaN(Number(formPemasukan))
+                          ? formatRupiah(Number(formPemasukan))
+                          : ""}
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Contoh: 500000"
+                      value={formPemasukan}
+                      onChange={(e) => setFormPemasukan(e.target.value.replace(/[^0-9]/g, ""))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-teal-400 rounded-xl text-slate-100 text-xs focus:outline-none font-mono"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      * Nominal cicilan / pembayaran yang sudah diterima (dapat diubah bebas oleh
+                      Admin).
+                    </p>
+                  </div>
+
+                  {/* 7. Jasa Parkir */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <ParkingMeter className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Tarif Jasa Parkir per Hari (Rp):</span>
+                      </div>
+                      <span className="text-[11px] text-amber-400 font-mono font-bold">
+                        {formJasaParkir !== "" && !isNaN(Number(formJasaParkir))
+                          ? formatRupiah(Number(formJasaParkir))
+                          : ""}
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Contoh: 20000"
+                      value={formJasaParkir}
+                      onChange={(e) => setFormJasaParkir(e.target.value.replace(/[^0-9]/g, ""))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl text-slate-100 text-xs focus:outline-none font-mono"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      * Tarif jasa parkir per hari yang tercantum pada motor (dapat diubah bebas
+                      oleh Admin).
+                    </p>
+                  </div>
+
+                  {/* 8. Catatan Unit (Opsional) */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Catatan / Keterangan Unit (Opsional):
@@ -1230,53 +1363,14 @@ export default function DruModal({
                     />
                   </div>
 
-
-                  {/* 6. Catatan Unit (Opsional, dapat dihapus/dikosongkan) */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Catatan / Keterangan Unit (Opsional):
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: Kondisi mulus orisinil / warna hitam doff"
-                      value={formCatatan}
-                      onChange={(e) => setFormCatatan(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-750 focus:border-amber-400 rounded-xl text-slate-100 text-xs focus:outline-none"
-                    />
+                  {/* Badge Admin Nominal */}
+                  <div className="sm:col-span-2 p-3 rounded-xl bg-slate-900/80 border border-amber-500/30 flex items-center gap-2.5 text-xs text-amber-300">
+                    <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>
+                      <strong>Hak Akses Admin:</strong> Anda dapat merubah nominal pokok, pemasukan,
+                      maupun tarif jasa parkir kapan saja tanpa batasan.
+                    </span>
                   </div>
-
-                  {/* Informasi Nominal Terkunci saat Edit (Sesuai Aturan: Nominal Tidak Dapat Diedit) */}
-                  {editingId && (
-                    <div className="sm:col-span-2 p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5">
-                      <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-                        <Lock className="w-3.5 h-3.5" />
-                        <span>Status Nominal (Terkunci & Tidak Dapat Diedit)</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                          <span className="text-slate-400 block text-[11px]">Nominal Motor:</span>
-                          <span className="font-mono font-bold text-emerald-400 text-sm mt-0.5 block">
-                            {formatRupiah(Number(formNominal) || 0)}
-                          </span>
-                          <span className="text-[10px] text-slate-500 italic mt-0.5 block">
-                            * Tidak dapat diubah
-                          </span>
-                        </div>
-                        <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                          <span className="text-slate-400 block text-[11px]">Nominal Pemasukan:</span>
-                          <span className="font-mono font-bold text-teal-300 text-sm mt-0.5 block">
-                            {Number(formPemasukan) > 0 ? formatRupiah(Number(formPemasukan)) : 'Pending (Belum Dikonfirmasi)'}
-                          </span>
-                          <span className="text-[10px] text-slate-500 italic mt-0.5 block">
-                            * Terisi otomatis via konfirmasi Pecel
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-amber-300/80">
-                        Catatan: Nominal pinjaman/motor dan pemasukan tidak dapat diedit. Informasi lainnya (tanggal masuk, nama motor, tahun, nopol, dan jasa parkir) dapat diubah bebas.
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
@@ -1300,7 +1394,13 @@ export default function DruModal({
                       id="btn-bottom-back-from-form"
                       onClick={() => {
                         handleCancelEdit();
-                        setActiveTab(formKepemilikan === 'mamah' ? 'dashboard_mamah' : formKepemilikan === 'pribadi' ? 'dashboard_pribadi' : 'dashboard_pecel');
+                        setActiveTab(
+                          formKepemilikan === "mamah"
+                            ? "dashboard_mamah"
+                            : formKepemilikan === "pribadi"
+                              ? "dashboard_pribadi"
+                              : "dashboard_pecel",
+                        );
                       }}
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-750 transition cursor-pointer"
                     >
@@ -1342,7 +1442,7 @@ export default function DruModal({
                       className="px-5 py-2.5 rounded-xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition cursor-pointer flex items-center gap-1.5"
                     >
                       <Check className="w-4 h-4" />
-                      <span>{editingId ? 'Simpan Perubahan' : 'Tambahkan Motor'}</span>
+                      <span>{editingId ? "Simpan Perubahan" : "Tambahkan Motor"}</span>
                     </button>
                   </div>
                 </div>
@@ -1351,7 +1451,7 @@ export default function DruModal({
           )}
 
           {/* TAB 5: PENGATURAN LOGO HEADER */}
-          {activeTab === 'logo' && (
+          {activeTab === "logo" && (
             <div className="max-w-xl mx-auto space-y-6">
               <div>
                 <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
@@ -1359,7 +1459,8 @@ export default function DruModal({
                   <span>Pengaturan Logo Header (Input oleh DRU)</span>
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Logo yang Anda tentukan di sini akan tampil di header halaman utama sebelah kiri judul MOTORKU.
+                  Logo yang Anda tentukan di sini akan tampil di header halaman utama sebelah kiri
+                  judul MOTORKU.
                 </p>
               </div>
 
@@ -1409,7 +1510,8 @@ export default function DruModal({
                     Unggah Berkas Gambar Logo (PNG, JPG, SVG, WebP):
                   </label>
                   <p className="text-[11px] text-amber-400/80 mb-2">
-                    * Saat memilih gambar, jendela penyesuaian/crop akan otomatis terbuka agar Anda dapat menyesuaikan ukuran dan posisinya.
+                    * Saat memilih gambar, jendela penyesuaian/crop akan otomatis terbuka agar Anda
+                    dapat menyesuaikan ukuran dan posisinya.
                   </p>
                   <input
                     type="file"
@@ -1430,7 +1532,9 @@ export default function DruModal({
 
                 <div className="relative flex items-center justify-center">
                   <div className="border-t border-slate-800 w-full" />
-                  <span className="bg-slate-950 px-2 text-[10px] text-slate-500 uppercase font-bold">atau link URL</span>
+                  <span className="bg-slate-950 px-2 text-[10px] text-slate-500 uppercase font-bold">
+                    atau link URL
+                  </span>
                 </div>
 
                 <div>
@@ -1501,7 +1605,7 @@ export default function DruModal({
           )}
 
           {/* TAB 6: PENGATURAN PASSWORD AKUN DRU */}
-          {activeTab === 'pengaturan' && (
+          {activeTab === "pengaturan" && (
             <div className="max-w-xl mx-auto space-y-6 animate-in fade-in duration-200">
               <div className="bg-slate-950/80 p-6 rounded-2xl border border-amber-500/30 shadow-xl space-y-5">
                 <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
@@ -1529,7 +1633,9 @@ export default function DruModal({
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-400">Tingkat Hak Akses:</span>
-                    <span className="text-slate-200 font-semibold">Administrator & Pemilik Usaha</span>
+                    <span className="text-slate-200 font-semibold">
+                      Administrator & Pemilik Usaha
+                    </span>
                   </div>
                 </div>
 
@@ -1542,7 +1648,7 @@ export default function DruModal({
                     </label>
                     <div className="relative">
                       <input
-                        type={showDruOldPass ? 'text' : 'password'}
+                        type={showDruOldPass ? "text" : "password"}
                         placeholder="Masukkan password saat ini..."
                         value={druOldPassword}
                         onChange={(e) => setDruOldPassword(e.target.value)}
@@ -1554,7 +1660,11 @@ export default function DruModal({
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 p-1"
                         title={showDruOldPass ? "Sembunyikan" : "Tampilkan"}
                       >
-                        {showDruOldPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showDruOldPass ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1566,7 +1676,7 @@ export default function DruModal({
                     </label>
                     <div className="relative">
                       <input
-                        type={showDruNewPass ? 'text' : 'password'}
+                        type={showDruNewPass ? "text" : "password"}
                         placeholder="Masukkan password baru (min 4 karakter)..."
                         value={druNewPassword}
                         onChange={(e) => setDruNewPassword(e.target.value)}
@@ -1578,7 +1688,11 @@ export default function DruModal({
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 p-1"
                         title={showDruNewPass ? "Sembunyikan" : "Tampilkan"}
                       >
-                        {showDruNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showDruNewPass ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1590,7 +1704,7 @@ export default function DruModal({
                     </label>
                     <div className="relative">
                       <input
-                        type={showDruConfirmPass ? 'text' : 'password'}
+                        type={showDruConfirmPass ? "text" : "password"}
                         placeholder="Ketik ulang password baru..."
                         value={druConfirmPassword}
                         onChange={(e) => setDruConfirmPassword(e.target.value)}
@@ -1602,7 +1716,11 @@ export default function DruModal({
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 p-1"
                         title={showDruConfirmPass ? "Sembunyikan" : "Tampilkan"}
                       >
-                        {showDruConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showDruConfirmPass ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1650,8 +1768,118 @@ export default function DruModal({
                     <span>Bantuan Pemulihan Kata Sandi:</span>
                   </span>
                   <p className="text-[11px] leading-relaxed">
-                    Jika sewaktu-waktu Anda lupa password, gunakan fitur <strong>"Lupa Password?"</strong> di pintu masuk login dan masukkan kode pemulihan khusus untuk mengembalikan password ke setelan normal default (<strong>123456</strong>).
+                    Jika sewaktu-waktu Anda lupa password, gunakan fitur{" "}
+                    <strong>"Lupa Password?"</strong> di pintu masuk login dan masukkan kode
+                    pemulihan khusus untuk mengembalikan password ke setelan normal default (
+                    <strong>123456</strong>).
                   </p>
+                </div>
+
+                {/* Turso libSQL Database Configuration */}
+                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                        <Database className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-200">
+                          Database Turso (libSQL)
+                        </h4>
+                        <p className="text-[11px] text-slate-400">
+                          Sinkronisasi data cloud real-time menggantikan Firebase
+                        </p>
+                      </div>
+                    </div>
+                    {tursoStatus && (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                          tursoStatus.connected
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            tursoStatus.connected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                          }`}
+                        />
+                        {tursoStatus.connected ? "Turso Aktif" : "Lokal / Offline"}
+                      </span>
+                    )}
+                  </div>
+
+                  {tursoStatus && (
+                    <div
+                      className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                        tursoStatus.connected
+                          ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"
+                          : "bg-amber-950/30 border-amber-500/30 text-amber-200"
+                      }`}
+                    >
+                      {tursoStatus.connected ? (
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                      )}
+                      <div className="text-[11px] leading-relaxed break-all">
+                        {tursoStatus.message}
+                      </div>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveAndTestTurso} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Turso Database URL:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: libsql://nama-db.turso.io atau https://..."
+                        value={tursoUrl}
+                        onChange={(e) => setTursoUrl(e.target.value)}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-900 border border-slate-800 focus:border-teal-400 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Turso Auth Token:
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Masukkan token otentikasi Turso (JWT)..."
+                        value={tursoToken}
+                        onChange={(e) => setTursoToken(e.target.value)}
+                        className="w-full px-3.5 py-2 text-xs bg-slate-900 border border-slate-800 focus:border-teal-400 rounded-xl text-slate-100 placeholder:text-slate-500 focus:outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <p className="text-[10px] text-slate-500">
+                        *Dapat disetel via env:{" "}
+                        <code className="text-teal-400">TURSO_DATABASE_URL</code> &{" "}
+                        <code className="text-teal-400">TURSO_AUTH_TOKEN</code>
+                      </p>
+                      <button
+                        type="submit"
+                        disabled={isTestingTurso}
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white transition cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                      >
+                        {isTestingTurso ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Menguji...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>Simpan & Uji Koneksi</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
@@ -1672,7 +1900,9 @@ export default function DruModal({
               </div>
               <div>
                 <h3 className="font-bold text-sm text-slate-100">Konfirmasi Hapus Motor</h3>
-                <p className="text-[11px] text-slate-400">Data akan dihapus permanen dari sistem & tabel utama</p>
+                <p className="text-[11px] text-slate-400">
+                  Data akan dihapus permanen dari sistem & tabel utama
+                </p>
               </div>
             </div>
 
@@ -1688,7 +1918,11 @@ export default function DruModal({
               <div className="flex justify-between">
                 <span className="text-slate-400">Kategori Dashboard:</span>
                 <span className="font-bold uppercase text-teal-300">
-                  {itemToDelete.kepemilikan === 'mamah' ? 'MOTOR MAMAH' : itemToDelete.kepemilikan === 'pribadi' ? 'PRIBADI' : 'MOTOR PECEL'}
+                  {itemToDelete.kepemilikan === "mamah"
+                    ? "MOTOR MAMAH"
+                    : itemToDelete.kepemilikan === "pribadi"
+                      ? "PRIBADI"
+                      : "MOTOR PECEL"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -1698,7 +1932,8 @@ export default function DruModal({
             </div>
 
             <p className="text-xs text-rose-300/90 leading-relaxed">
-              Apakah Anda yakin ingin menghapus data motor ini? Data yang terhapus tidak dapat dikembalikan.
+              Apakah Anda yakin ingin menghapus data motor ini? Data yang terhapus tidak dapat
+              dikembalikan.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
@@ -1726,14 +1961,18 @@ export default function DruModal({
                   try {
                     await onDeleteMotor(targetId);
                     setItemToDelete(null);
-                    setDeleteNotice(`Unit motor ${deletedName} (${deletedNopol}) berhasil dihapus permanen dari sistem & database.`);
+                    setDeleteNotice(
+                      `Unit motor ${deletedName} (${deletedNopol}) berhasil dihapus permanen dari sistem & database.`,
+                    );
                   } catch (err) {
-                    console.error('Failed to delete motor:', err);
-                    setDeleteNotice(`Gagal menghapus unit motor ${deletedName}. Silakan coba lagi.`);
+                    console.error("Failed to delete motor:", err);
+                    setDeleteNotice(
+                      `Gagal menghapus unit motor ${deletedName}. Silakan coba lagi.`,
+                    );
                   } finally {
                     setIsDeleting(false);
                   }
-                  setTimeout(() => setDeleteNotice(''), 4500);
+                  setTimeout(() => setDeleteNotice(""), 4500);
                 }}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-linear-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 disabled:opacity-50 text-white shadow-lg shadow-rose-600/30 transition cursor-pointer flex items-center gap-1.5 active:scale-95"
               >
@@ -1768,7 +2007,9 @@ export default function DruModal({
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-100">Kirim Nominal Pemasukan</h3>
-                  <p className="text-[11px] text-slate-400">Kirim nominal ke Halaman Pecel untuk dikonfirmasi</p>
+                  <p className="text-[11px] text-slate-400">
+                    Kirim nominal ke Halaman Pecel untuk dikonfirmasi
+                  </p>
                 </div>
               </div>
               <button
@@ -1813,8 +2054,10 @@ export default function DruModal({
                     inputMode="numeric"
                     autoFocus
                     placeholder="Contoh: 500000"
-                    value={sendPemasukanAmount || ''}
-                    onChange={(e) => setSendPemasukanAmount(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                    value={sendPemasukanAmount || ""}
+                    onChange={(e) =>
+                      setSendPemasukanAmount(Number(e.target.value.replace(/[^0-9]/g, "")) || 0)
+                    }
 
                     className="w-full px-3.5 py-2.5 bg-slate-950 border border-teal-500/50 rounded-xl text-teal-300 font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                   />
@@ -1835,7 +2078,9 @@ export default function DruModal({
               </div>
 
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-300/95 leading-relaxed">
-                * Sebelum Halaman Pecel mengonfirmasi, status pemasukan akan tetap bertuliskan <strong>Pending</strong>. Setelah dikonfirmasi Pecel, nominal akan terisi otomatis ke sistem.
+                * Sebelum Halaman Pecel mengonfirmasi, status pemasukan akan tetap bertuliskan{" "}
+                <strong>Pending</strong>. Setelah dikonfirmasi Pecel, nominal akan terisi otomatis
+                ke sistem.
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">

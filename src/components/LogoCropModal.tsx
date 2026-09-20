@@ -1,5 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Crop, ZoomIn, ZoomOut, RotateCw, Move, Check, X, Sparkles, RefreshCw, Eye, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Crop,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Move,
+  Check,
+  X,
+  Sparkles,
+  RefreshCw,
+  Eye,
+  ArrowLeft,
+} from "lucide-react";
 
 interface LogoCropModalProps {
   isOpen: boolean;
@@ -15,17 +27,23 @@ export default function LogoCropModal({
   isOpen,
   imageSrc,
   onClose,
-  onSaveCropped
+  onSaveCropped,
 }: LogoCropModalProps) {
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [rotation, setRotation] = useState<number>(0);
-  const [imgNaturalSize, setImgNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [imgNaturalSize, setImgNaturalSize] = useState<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [currentPanAtDragStart, setCurrentPanAtDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [bgChoice, setBgChoice] = useState<'transparent' | 'dark' | 'white'>('transparent');
-  const [previewDataUrl, setPreviewDataUrl] = useState<string>('');
+  const [currentPanAtDragStart, setCurrentPanAtDragStart] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
+  const [bgChoice, setBgChoice] = useState<"transparent" | "dark" | "white">("transparent");
+  const [previewDataUrl, setPreviewDataUrl] = useState<string>("");
 
   const imgRef = useRef<HTMLImageElement | null>(null);
 
@@ -34,7 +52,7 @@ export default function LogoCropModal({
     if (!imageSrc || !isOpen) return;
 
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.crossOrigin = "anonymous";
     img.onload = () => {
       const naturalW = img.naturalWidth || img.width;
       const naturalH = img.naturalHeight || img.height;
@@ -56,17 +74,17 @@ export default function LogoCropModal({
 
     const timer = setTimeout(() => {
       try {
-        const canvas = document.createElement('canvas');
+        const canvas = document.createElement("canvas");
         canvas.width = 112;
         canvas.height = 112;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        if (bgChoice === 'dark') {
-          ctx.fillStyle = '#020617';
+        if (bgChoice === "dark") {
+          ctx.fillStyle = "#020617";
           ctx.fillRect(0, 0, 112, 112);
-        } else if (bgChoice === 'white') {
-          ctx.fillStyle = '#ffffff';
+        } else if (bgChoice === "white") {
+          ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, 112, 112);
         }
 
@@ -77,15 +95,15 @@ export default function LogoCropModal({
         ctx.scale(zoom * scaleRatio, zoom * scaleRatio);
 
         const img = new Image();
-        img.crossOrigin = 'anonymous';
+        img.crossOrigin = "anonymous";
         img.onload = () => {
           ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
           ctx.restore();
-          setPreviewDataUrl(canvas.toDataURL('image/png'));
+          setPreviewDataUrl(canvas.toDataURL("image/png"));
         };
         img.src = imageSrc;
       } catch (err) {
-        console.error('Error generating preview', err);
+        console.error("Error generating preview", err);
       }
     }, 50);
 
@@ -127,7 +145,7 @@ export default function LogoCropModal({
     const deltaY = e.clientY - dragStart.y;
     setPan({
       x: Math.round(currentPanAtDragStart.x + deltaX),
-      y: Math.round(currentPanAtDragStart.y + deltaY)
+      y: Math.round(currentPanAtDragStart.y + deltaY),
     });
   };
 
@@ -150,7 +168,7 @@ export default function LogoCropModal({
     const deltaY = e.touches[0].clientY - dragStart.y;
     setPan({
       x: Math.round(currentPanAtDragStart.x + deltaX),
-      y: Math.round(currentPanAtDragStart.y + deltaY)
+      y: Math.round(currentPanAtDragStart.y + deltaY),
     });
   };
 
@@ -161,18 +179,18 @@ export default function LogoCropModal({
   // Export high-resolution cropped 1:1 image
   const handleSave = () => {
     try {
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = EXPORT_SIZE;
       canvas.height = EXPORT_SIZE;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       // Fill background if chosen
-      if (bgChoice === 'dark') {
-        ctx.fillStyle = '#020617';
+      if (bgChoice === "dark") {
+        ctx.fillStyle = "#020617";
         ctx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE);
-      } else if (bgChoice === 'white') {
-        ctx.fillStyle = '#ffffff';
+      } else if (bgChoice === "white") {
+        ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, EXPORT_SIZE, EXPORT_SIZE);
       }
 
@@ -183,13 +201,13 @@ export default function LogoCropModal({
       ctx.scale(zoom * scaleRatio, zoom * scaleRatio);
 
       const img = new Image();
-      if (imageSrc.startsWith('http://') || imageSrc.startsWith('https://')) {
-        img.crossOrigin = 'anonymous';
+      if (imageSrc.startsWith("http://") || imageSrc.startsWith("https://")) {
+        img.crossOrigin = "anonymous";
       }
       img.onload = () => {
         ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
         ctx.restore();
-        const croppedData = canvas.toDataURL('image/png');
+        const croppedData = canvas.toDataURL("image/png");
         onSaveCropped(croppedData);
         onClose();
       };
@@ -199,7 +217,7 @@ export default function LogoCropModal({
       };
       img.src = imageSrc;
     } catch (err) {
-      console.error('Failed to crop image', err);
+      console.error("Failed to crop image", err);
       // Fallback
       onSaveCropped(imageSrc);
       onClose();
@@ -207,13 +225,13 @@ export default function LogoCropModal({
   };
 
   return (
-    <div 
-      id="modal-logo-cropper" 
+    <div
+      id="modal-logo-cropper"
       className="fixed inset-0 z-70 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
-      <div 
+      <div
         className="bg-slate-900 border border-amber-500/40 rounded-3xl p-5 sm:p-6 max-w-xl w-full shadow-2xl text-slate-100 space-y-5 animate-in fade-in zoom-in duration-200"
         onClick={(e) => e.stopPropagation()}
       >
@@ -254,7 +272,11 @@ export default function LogoCropModal({
               id="crop-viewport"
               style={{ width: PREVIEW_SIZE, height: PREVIEW_SIZE }}
               className={`relative rounded-2xl border-2 border-amber-400/70 overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing select-none flex items-center justify-center transition-colors ${
-                bgChoice === 'dark' ? 'bg-slate-950' : bgChoice === 'white' ? 'bg-white' : 'bg-radial from-slate-800 to-slate-950'
+                bgChoice === "dark"
+                  ? "bg-slate-950"
+                  : bgChoice === "white"
+                    ? "bg-white"
+                    : "bg-radial from-slate-800 to-slate-950"
               }`}
               onMouseDown={handleMouseDown}
               onTouchStart={handleTouchStart}
@@ -269,10 +291,10 @@ export default function LogoCropModal({
                 draggable={false}
                 style={{
                   transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) rotate(${rotation}deg)`,
-                  transformOrigin: 'center center',
-                  maxWidth: 'none',
-                  maxHeight: 'none',
-                  pointerEvents: 'none'
+                  transformOrigin: "center center",
+                  maxWidth: "none",
+                  maxHeight: "none",
+                  pointerEvents: "none",
                 }}
                 className="select-none transition-transform duration-75 ease-out"
               />
@@ -375,37 +397,39 @@ export default function LogoCropModal({
 
             {/* Background selection */}
             <div className="space-y-1.5">
-              <span className="text-[11px] text-slate-400 block font-medium">Latar Belakang Logo:</span>
+              <span className="text-[11px] text-slate-400 block font-medium">
+                Latar Belakang Logo:
+              </span>
               <div className="grid grid-cols-3 gap-1.5 text-[10px]">
                 <button
                   type="button"
-                  onClick={() => setBgChoice('transparent')}
+                  onClick={() => setBgChoice("transparent")}
                   className={`py-1.5 px-2 rounded-lg font-semibold border text-center transition cursor-pointer ${
-                    bgChoice === 'transparent'
-                      ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-                      : 'bg-slate-900 border-slate-800 text-slate-400'
+                    bgChoice === "transparent"
+                      ? "bg-amber-500/20 border-amber-400 text-amber-300"
+                      : "bg-slate-900 border-slate-800 text-slate-400"
                   }`}
                 >
                   Asli / Transparan
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBgChoice('dark')}
+                  onClick={() => setBgChoice("dark")}
                   className={`py-1.5 px-2 rounded-lg font-semibold border text-center transition cursor-pointer ${
-                    bgChoice === 'dark'
-                      ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-                      : 'bg-slate-900 border-slate-800 text-slate-400'
+                    bgChoice === "dark"
+                      ? "bg-amber-500/20 border-amber-400 text-amber-300"
+                      : "bg-slate-900 border-slate-800 text-slate-400"
                   }`}
                 >
                   Hitam Mewah
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBgChoice('white')}
+                  onClick={() => setBgChoice("white")}
                   className={`py-1.5 px-2 rounded-lg font-semibold border text-center transition cursor-pointer ${
-                    bgChoice === 'white'
-                      ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-                      : 'bg-slate-900 border-slate-800 text-slate-400'
+                    bgChoice === "white"
+                      ? "bg-amber-500/20 border-amber-400 text-amber-300"
+                      : "bg-slate-900 border-slate-800 text-slate-400"
                   }`}
                 >
                   Putih Bersih
