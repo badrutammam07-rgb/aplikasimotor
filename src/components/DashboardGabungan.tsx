@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import {
   Search,
   ArrowUpDown,
@@ -14,6 +14,9 @@ import {
   CheckCircle2,
   Flame,
   Home,
+  MoveHorizontal,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { MotorRecord, KepemilikanType } from "../types";
 import { calculateElapsedDays, formatElapsedDays, formatRupiah } from "../data/initialData";
@@ -38,6 +41,58 @@ export default function DashboardGabungan({
   const [kepemilikanFilter, setKepemilikanFilter] = useState<"all" | KepemilikanType>("all");
   const [sortField, setSortField] = useState<SortField>("tanggal");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+
+  // Mouse Drag-to-Scroll State
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftPos, setScrollLeftPos] = useState(0);
+  const hasDraggedRef = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Jangan drag jika mengklik tombol/input/select
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("select") ||
+      target.closest("a")
+    ) {
+      return;
+    }
+    if (!tableContainerRef.current) return;
+    setIsDragging(true);
+    hasDraggedRef.current = false;
+    setStartX(e.pageX - tableContainerRef.current.offsetLeft);
+    setScrollLeftPos(tableContainerRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !tableContainerRef.current) return;
+    const x = e.pageX - tableContainerRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    if (Math.abs(x - startX) > 4) {
+      hasDraggedRef.current = true;
+    }
+    tableContainerRef.current.scrollLeft = scrollLeftPos - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const scrollTable = (direction: "left" | "right") => {
+    if (!tableContainerRef.current) return;
+    const scrollAmount = 350;
+    tableContainerRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+  };
 
   // Format and calculate rows for Dashboard Gabungan
   // Formula:
@@ -150,6 +205,9 @@ export default function DashboardGabungan({
   }, [filteredData]);
 
   const handleSort = (field: SortField) => {
+    if (hasDraggedRef.current) {
+      return;
+    }
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -338,246 +396,297 @@ export default function DashboardGabungan({
 
       {/* Main Table View */}
       <div
-        id="gabungan-table-scroll"
-        className="flex-1 min-h-0 overflow-auto bg-slate-950 px-4 sm:px-8 py-3"
+        id="gabungan-table-wrapper"
+        className="flex-1 min-h-0 flex flex-col bg-slate-950 px-3 sm:px-6 py-3 min-w-0"
       >
-        <div className="rounded-2xl border border-slate-800 overflow-hidden shadow-xl bg-slate-950/80">
-          <table className="w-full text-xs text-left border-collapse min-w-[850px]">
-            <thead className="sticky top-0 bg-slate-900 text-amber-300 uppercase font-bold border-b border-slate-800 z-10 select-none shadow-sm">
-              <tr>
-                {/* 1. Tanggal Masuk */}
-                <th
-                  onClick={() => handleSort("tanggal")}
-                  className="py-3.5 px-3.5 whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <CalendarDays className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Tanggal Masuk</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
+        {/* Navigation & Drag Hint Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 px-1 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium">
+              <MoveHorizontal className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Tabel Dapat Digeser / Scroll Horizontal</span>
+            </span>
+            <span className="hidden md:inline text-[11px] text-slate-500">
+              (Seret mouse ke samping, gunakan trackpad, atau klik tombol geser)
+            </span>
+          </div>
 
-                {/* 2. Jenis Motor */}
-                <th
-                  onClick={() => handleSort("motor")}
-                  className="py-3.5 px-3.5 whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Bike className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Jenis Motor</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
+          {/* Quick Scroll Buttons */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              id="btn-scroll-left-gabungan"
+              onClick={() => scrollTable("left")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 border border-slate-750 text-xs font-semibold transition cursor-pointer shadow-xs"
+              title="Geser tabel ke kiri"
+            >
+              <ChevronLeft className="w-3.5 h-3.5 text-amber-400" />
+              <span>Geser Kiri</span>
+            </button>
+            <button
+              type="button"
+              id="btn-scroll-right-gabungan"
+              onClick={() => scrollTable("right")}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 border border-slate-750 text-xs font-semibold transition cursor-pointer shadow-xs"
+              title="Geser tabel ke kanan untuk melihat Jasa Parkir & Total"
+            >
+              <span>Geser Kanan</span>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+            </button>
+          </div>
+        </div>
 
-                {/* 3. Plat Nomor */}
-                <th
-                  onClick={() => handleSort("nopol")}
-                  className="py-3.5 px-3.5 text-center whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span>Plat Nomor</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
-
-                {/* Kepemilikan Tag */}
-                <th className="py-3.5 px-3 text-center whitespace-nowrap">
-                  <span>Kepemilikan</span>
-                </th>
-
-                {/* 4. Nominal */}
-                <th
-                  onClick={() => handleSort("nominal")}
-                  className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Nominal</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
-
-                {/* 5. Hari (tanggal input = 1 hari) */}
-                <th
-                  onClick={() => handleSort("hari")}
-                  className="py-3.5 px-3.5 text-center whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div
-                    className="flex items-center justify-center gap-1.5"
-                    title="Tanggal saat di-input sudah dianggap 1 hari bukan 0"
-                  >
-                    <span>Hari</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
-
-                {/* 6. Pemasukan */}
-                <th
-                  onClick={() => handleSort("pemasukan")}
-                  className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-teal-400" />
-                    <span>Pemasukan</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
-
-                {/* 7. Jasa Parkir (jumlah hari x jasa parkir motor) */}
-                <th
-                  onClick={() => handleSort("jasaParkirTotal")}
-                  className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div
-                    className="flex items-center justify-end gap-1.5"
-                    title="Formula: Jumlah Hari x Jasa Parkir yang tercantum pada motor"
-                  >
-                    <ParkingMeter className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Jasa Parkir</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
-
-                {/* 8. Total (nominal + jasa parkir - pemasukan) */}
-                <th
-                  onClick={() => handleSort("total")}
-                  className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition"
-                >
-                  <div
-                    className="flex items-center justify-end gap-1.5"
-                    title="Formula: Nominal + Jasa Parkir - Pemasukan"
-                  >
-                    <Calculator className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Total</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-500" />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-800/80">
-              {isLoading ? (
+        {/* Outer Card with border & shadow */}
+        <div className="rounded-2xl border border-slate-800 shadow-xl bg-slate-950/80 overflow-hidden flex flex-col flex-1 min-h-0 min-w-0">
+          {/* Scrollable & Draggable Viewport */}
+          <div
+            ref={tableContainerRef}
+            id="gabungan-table-scroll"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            className={`overflow-x-auto overflow-y-auto max-h-[540px] flex-1 min-h-[360px] touch-pan-x select-text custom-table-scrollbar ${
+              isDragging ? "cursor-grabbing select-none" : "cursor-grab"
+            }`}
+          >
+            <table className="w-full text-xs text-left border-collapse min-w-[1200px]">
+              <thead className="sticky top-0 bg-slate-900 text-amber-300 uppercase font-bold border-b border-slate-800 z-10 select-none shadow-sm">
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
-                    Memuat data dashboard gabungan...
-                  </td>
-                </tr>
-              ) : filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
-                    Tidak ada unit motor yang cocok dengan pencarian atau filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredData.map((row) => {
-                  return (
-                    <tr key={row.id} className="hover:bg-slate-900/60 transition group text-xs">
-                      {/* 1. Tanggal Masuk */}
-                      <td className="py-3 px-3.5 font-mono text-slate-300 whitespace-nowrap">
-                        {row.tanggal}
-                      </td>
+                  {/* 1. Tanggal Masuk */}
+                  <th
+                    onClick={() => handleSort("tanggal")}
+                    className="py-3.5 px-3.5 whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[130px]"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <CalendarDays className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Tanggal Masuk</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
 
-                      {/* 2. Jenis Motor */}
-                      <td className="py-3 px-3.5 font-semibold text-slate-100 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span>{row.motor}</span>
-                          {row.tahun && (
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              ({row.tahun})
-                            </span>
-                          )}
-                        </div>
-                        {row.catatan && (
-                          <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs">
-                            {row.catatan}
+                  {/* 2. Jenis Motor */}
+                  <th
+                    onClick={() => handleSort("motor")}
+                    className="py-3.5 px-3.5 whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[200px]"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Bike className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Jenis Motor</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
+
+                  {/* 3. Plat Nomor */}
+                  <th
+                    onClick={() => handleSort("nopol")}
+                    className="py-3.5 px-3.5 text-center whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[120px]"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Plat Nomor</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
+
+                  {/* Kepemilikan Tag */}
+                  <th className="py-3.5 px-3 text-center whitespace-nowrap min-w-[100px]">
+                    <span>Kepemilikan</span>
+                  </th>
+
+                  {/* 4. Nominal */}
+                  <th
+                    onClick={() => handleSort("nominal")}
+                    className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[130px]"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Nominal</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
+
+                  {/* 5. Hari (tanggal input = 1 hari) */}
+                  <th
+                    onClick={() => handleSort("hari")}
+                    className="py-3.5 px-3.5 text-center whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[90px]"
+                  >
+                    <div
+                      className="flex items-center justify-center gap-1.5"
+                      title="Tanggal saat di-input sudah dianggap 1 hari bukan 0"
+                    >
+                      <span>Hari</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
+
+                  {/* 6. Pemasukan */}
+                  <th
+                    onClick={() => handleSort("pemasukan")}
+                    className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[130px]"
+                  >
+                    <div className="flex items-center justify-end gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Pemasukan</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
+
+                  {/* 7. Jasa Parkir (jumlah hari x jasa parkir motor) */}
+                  <th
+                    onClick={() => handleSort("jasaParkirTotal")}
+                    className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[150px]"
+                  >
+                    <div
+                      className="flex items-center justify-end gap-1.5"
+                      title="Formula: Jumlah Hari x Jasa Parkir yang tercantum pada motor"
+                    >
+                      <ParkingMeter className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Jasa Parkir</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
+
+                  {/* 8. Total (nominal + jasa parkir - pemasukan) */}
+                  <th
+                    onClick={() => handleSort("total")}
+                    className="py-3.5 px-3.5 text-right whitespace-nowrap cursor-pointer hover:text-amber-200 transition min-w-[170px]"
+                  >
+                    <div
+                      className="flex items-center justify-end gap-1.5"
+                      title="Formula: Nominal + Jasa Parkir - Pemasukan"
+                    >
+                      <Calculator className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Total</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-800/80">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
+                      Memuat data dashboard gabungan...
+                    </td>
+                  </tr>
+                ) : filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
+                      Tidak ada unit motor yang cocok dengan pencarian atau filter.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredData.map((row) => {
+                    return (
+                      <tr key={row.id} className="hover:bg-slate-900/60 transition group text-xs">
+                        {/* 1. Tanggal Masuk */}
+                        <td className="py-3 px-3.5 font-mono text-slate-300 whitespace-nowrap">
+                          {row.tanggal}
+                        </td>
+
+                        {/* 2. Jenis Motor */}
+                        <td className="py-3 px-3.5 font-semibold text-slate-100 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span>{row.motor}</span>
+                            {row.tahun && (
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                ({row.tahun})
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </td>
+                          {row.catatan && (
+                            <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs">
+                              {row.catatan}
+                            </div>
+                          )}
+                        </td>
 
-                      {/* 3. Plat Nomor */}
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-400 whitespace-nowrap">
-                        {row.nopol}
-                      </td>
+                        {/* 3. Plat Nomor */}
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-400 whitespace-nowrap">
+                          {row.nopol}
+                        </td>
 
-                      {/* Kepemilikan */}
-                      <td className="py-3 px-3 text-center whitespace-nowrap">
-                        {getKepemilikanBadge(row.kepemilikanVal)}
-                      </td>
+                        {/* Kepemilikan */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          {getKepemilikanBadge(row.kepemilikanVal)}
+                        </td>
 
-                      {/* 4. Nominal */}
-                      <td className="py-3 px-3.5 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
-                        {formatRupiah(row.nominalVal)}
-                      </td>
+                        {/* 4. Nominal */}
+                        <td className="py-3 px-3.5 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
+                          {formatRupiah(row.nominalVal)}
+                        </td>
 
-                      {/* 5. Hari (tanggal di-input = 1 hari) */}
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-teal-300 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-teal-500/10 border border-teal-500/30">
-                          {row.daysDisplay}
-                        </span>
-                      </td>
+                        {/* 5. Hari (tanggal di-input = 1 hari) */}
+                        <td className="py-3 px-3.5 text-center font-mono font-bold text-teal-300 whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded-md bg-teal-500/10 border border-teal-500/30">
+                            {row.daysDisplay}
+                          </span>
+                        </td>
 
-                      {/* 6. Pemasukan */}
-                      <td className="py-3 px-3.5 text-right font-mono text-teal-300 whitespace-nowrap">
-                        {row.pemasukanVal > 0 ? (
-                          <span className="font-bold">{formatRupiah(row.pemasukanVal)}</span>
-                        ) : (
-                          <span className="text-slate-500">Rp 0</span>
-                        )}
-                      </td>
+                        {/* 6. Pemasukan */}
+                        <td className="py-3 px-3.5 text-right font-mono text-teal-300 whitespace-nowrap">
+                          {row.pemasukanVal > 0 ? (
+                            <span className="font-bold">{formatRupiah(row.pemasukanVal)}</span>
+                          ) : (
+                            <span className="text-slate-500">Rp 0</span>
+                          )}
+                        </td>
 
-                      {/* 7. Jasa Parkir (jumlah hari x tarif per motor) */}
-                      <td className="py-3 px-3.5 text-right font-mono whitespace-nowrap">
-                        <div className="font-bold text-amber-300">
-                          {formatRupiah(row.totalJasaParkir)}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {row.daysCount} hr × {formatRupiah(row.rateJasa)}
-                        </div>
-                      </td>
+                        {/* 7. Jasa Parkir (jumlah hari x tarif per motor) */}
+                        <td className="py-3 px-3.5 text-right font-mono whitespace-nowrap">
+                          <div className="font-bold text-amber-300">
+                            {formatRupiah(row.totalJasaParkir)}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {row.daysCount} hr × {formatRupiah(row.rateJasa)}
+                          </div>
+                        </td>
 
-                      {/* 8. Total (nominal + jasa parkir - pemasukan) */}
-                      <td className="py-3 px-3.5 text-right font-mono font-bold text-amber-200 whitespace-nowrap bg-amber-500/5">
-                        <div className="text-sm font-black text-amber-300">
-                          {formatRupiah(row.totalVal)}
-                        </div>
-                        <div className="text-[9px] text-slate-400 font-normal">
-                          {formatRupiah(row.nominalVal)} + {formatRupiah(row.totalJasaParkir)} -{" "}
-                          {formatRupiah(row.pemasukanVal)}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        {/* 8. Total (nominal + jasa parkir - pemasukan) */}
+                        <td className="py-3 px-3.5 text-right font-mono font-bold text-amber-200 whitespace-nowrap bg-amber-500/5">
+                          <div className="text-sm font-black text-amber-300">
+                            {formatRupiah(row.totalVal)}
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-normal">
+                            {formatRupiah(row.nominalVal)} + {formatRupiah(row.totalJasaParkir)} -{" "}
+                            {formatRupiah(row.pemasukanVal)}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+
+              {/* Sticky Table Footer with Summary Row */}
+              {filteredData.length > 0 && (
+                <tfoot className="sticky bottom-0 bg-slate-900 text-slate-100 font-bold border-t-2 border-amber-500/40 shadow-md z-10">
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="py-3 px-3.5 text-right uppercase text-amber-300 text-xs tracking-wider"
+                    >
+                      Total ({totals.count} Motor):
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono text-emerald-400 font-bold whitespace-nowrap">
+                      {formatRupiah(totals.nominal)}
+                    </td>
+                    <td className="py-3 px-3.5 text-center text-slate-400 text-[11px]">—</td>
+                    <td className="py-3 px-3.5 text-right font-mono text-teal-300 font-bold whitespace-nowrap">
+                      {formatRupiah(totals.pemasukan)}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono text-amber-300 font-bold whitespace-nowrap">
+                      {formatRupiah(totals.jasaParkir)}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono text-amber-300 font-black text-sm whitespace-nowrap bg-amber-500/10">
+                      {formatRupiah(totals.total)}
+                    </td>
+                  </tr>
+                </tfoot>
               )}
-            </tbody>
-
-            {/* Sticky Table Footer with Summary Row */}
-            {filteredData.length > 0 && (
-              <tfoot className="bg-slate-900 text-slate-100 font-bold border-t border-amber-500/30">
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="py-3 px-3.5 text-right uppercase text-amber-300 text-xs tracking-wider"
-                  >
-                    Total ({totals.count} Motor):
-                  </td>
-                  <td className="py-3 px-3.5 text-right font-mono text-emerald-400 font-bold whitespace-nowrap">
-                    {formatRupiah(totals.nominal)}
-                  </td>
-                  <td className="py-3 px-3.5 text-center text-slate-400 text-[11px]">—</td>
-                  <td className="py-3 px-3.5 text-right font-mono text-teal-300 font-bold whitespace-nowrap">
-                    {formatRupiah(totals.pemasukan)}
-                  </td>
-                  <td className="py-3 px-3.5 text-right font-mono text-amber-300 font-bold whitespace-nowrap">
-                    {formatRupiah(totals.jasaParkir)}
-                  </td>
-                  <td className="py-3 px-3.5 text-right font-mono text-amber-300 font-black text-sm whitespace-nowrap bg-amber-500/10">
-                    {formatRupiah(totals.total)}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+            </table>
+          </div>
         </div>
       </div>
     </div>

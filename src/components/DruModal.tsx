@@ -1041,10 +1041,10 @@ export default function DruModal({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-900/60">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-900/60 min-w-0 w-full">
           {/* TAB 0: DASHBOARD GABUNGAN (Pecel, Mamah, Pribadi - View Only) */}
           {activeTab === "dashboard_gabungan" && (
-            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col min-h-[500px]">
+            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col min-h-[500px] w-full min-w-0">
               <DashboardGabungan data={motorData} onGoHome={handleExitAndLogout} />
             </div>
           )}

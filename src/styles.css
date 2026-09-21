@@ -154,20 +154,31 @@ body,
   overflow: hidden;
 }
 
-#table-scroll-container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+#table-scroll-container::-webkit-scrollbar,
+#gabungan-table-scroll::-webkit-scrollbar,
+.custom-table-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-#table-scroll-container::-webkit-scrollbar-track {
-  background: #020617;
-}
-
-#table-scroll-container::-webkit-scrollbar-thumb {
-  background: #334155;
+#table-scroll-container::-webkit-scrollbar-track,
+#gabungan-table-scroll::-webkit-scrollbar-track,
+.custom-table-scrollbar::-webkit-scrollbar-track {
+  background: #090d16;
   border-radius: 9999px;
 }
 
-#table-scroll-container::-webkit-scrollbar-thumb:hover {
+#table-scroll-container::-webkit-scrollbar-thumb,
+#gabungan-table-scroll::-webkit-scrollbar-thumb,
+.custom-table-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+  border: 1px solid #475569;
+}
+
+#table-scroll-container::-webkit-scrollbar-thumb:hover,
+#gabungan-table-scroll::-webkit-scrollbar-thumb:hover,
+.custom-table-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #d97706;
+  border-color: #f59e0b;
 }
