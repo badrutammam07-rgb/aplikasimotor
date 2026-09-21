@@ -17,6 +17,8 @@ import {
   MoveHorizontal,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { MotorRecord, KepemilikanType } from "../types";
 import { calculateElapsedDays, formatElapsedDays, formatRupiah } from "../data/initialData";
@@ -42,15 +44,18 @@ export default function DashboardGabungan({
   const [sortField, setSortField] = useState<SortField>("tanggal");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
-  // Mouse Drag-to-Scroll State
+  // Mouse Drag-to-Scroll State (both X and Y)
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
   const [scrollLeftPos, setScrollLeftPos] = useState(0);
+  const [scrollTopPos, setScrollTopPos] = useState(0);
   const hasDraggedRef = useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Jangan drag jika mengklik tombol/input/select
+    // Hanya klik kiri
+    if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (
       target.closest("button") ||
@@ -64,17 +69,22 @@ export default function DashboardGabungan({
     setIsDragging(true);
     hasDraggedRef.current = false;
     setStartX(e.pageX - tableContainerRef.current.offsetLeft);
+    setStartY(e.pageY - tableContainerRef.current.offsetTop);
     setScrollLeftPos(tableContainerRef.current.scrollLeft);
+    setScrollTopPos(tableContainerRef.current.scrollTop);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDragging || !tableContainerRef.current) return;
     const x = e.pageX - tableContainerRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5;
-    if (Math.abs(x - startX) > 4) {
+    const y = e.pageY - tableContainerRef.current.offsetTop;
+    const walkX = (x - startX) * 1.5;
+    const walkY = (y - startY) * 1.5;
+    if (Math.abs(x - startX) > 4 || Math.abs(y - startY) > 4) {
       hasDraggedRef.current = true;
     }
-    tableContainerRef.current.scrollLeft = scrollLeftPos - walk;
+    tableContainerRef.current.scrollLeft = scrollLeftPos - walkX;
+    tableContainerRef.current.scrollTop = scrollTopPos - walkY;
   };
 
   const handleMouseUp = () => {
@@ -85,11 +95,20 @@ export default function DashboardGabungan({
     setIsDragging(false);
   };
 
-  const scrollTable = (direction: "left" | "right") => {
+  const scrollTableHorizontal = (direction: "left" | "right") => {
     if (!tableContainerRef.current) return;
     const scrollAmount = 350;
     tableContainerRef.current.scrollBy({
       left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+  };
+
+  const scrollTableVertical = (direction: "up" | "down") => {
+    if (!tableContainerRef.current) return;
+    const scrollAmount = 260;
+    tableContainerRef.current.scrollBy({
+      top: direction === "up" ? -scrollAmount : scrollAmount,
       behavior: "smooth",
     });
   };
@@ -399,40 +418,67 @@ export default function DashboardGabungan({
         id="gabungan-table-wrapper"
         className="flex-1 min-h-0 flex flex-col bg-slate-950 px-3 sm:px-6 py-3 min-w-0"
       >
-        {/* Navigation & Drag Hint Bar */}
+        {/* Navigation & Scroll Controls Bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 px-1 shrink-0">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium">
               <MoveHorizontal className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Tabel Dapat Digeser / Scroll Horizontal</span>
+              <span>Tabel Dapat Di-scroll Ke Bawah & Ke Samping</span>
             </span>
             <span className="hidden md:inline text-[11px] text-slate-500">
-              (Seret mouse ke samping, gunakan trackpad, atau klik tombol geser)
+              (Roda mouse, swipe layar sentuh, seret mouse, atau tombol navigasi)
             </span>
           </div>
 
-          {/* Quick Scroll Buttons */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              id="btn-scroll-left-gabungan"
-              onClick={() => scrollTable("left")}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 border border-slate-750 text-xs font-semibold transition cursor-pointer shadow-xs"
-              title="Geser tabel ke kiri"
-            >
-              <ChevronLeft className="w-3.5 h-3.5 text-amber-400" />
-              <span>Geser Kiri</span>
-            </button>
-            <button
-              type="button"
-              id="btn-scroll-right-gabungan"
-              onClick={() => scrollTable("right")}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 border border-slate-750 text-xs font-semibold transition cursor-pointer shadow-xs"
-              title="Geser tabel ke kanan untuk melihat Jasa Parkir & Total"
-            >
-              <span>Geser Kanan</span>
-              <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-            </button>
+          {/* Quick Scroll Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Scroll Vertical Buttons */}
+            <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800 shadow-xs">
+              <button
+                type="button"
+                id="btn-scroll-up-gabungan"
+                onClick={() => scrollTableVertical("up")}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 text-xs font-semibold transition cursor-pointer"
+                title="Scroll tabel ke atas"
+              >
+                <ChevronUp className="w-3.5 h-3.5 text-amber-400" />
+                <span>Ke Atas</span>
+              </button>
+              <button
+                type="button"
+                id="btn-scroll-down-gabungan"
+                onClick={() => scrollTableVertical("down")}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 text-xs font-semibold transition cursor-pointer"
+                title="Scroll tabel ke bawah untuk melihat semua unit"
+              >
+                <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
+                <span>Ke Bawah</span>
+              </button>
+            </div>
+
+            {/* Scroll Horizontal Buttons */}
+            <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800 shadow-xs">
+              <button
+                type="button"
+                id="btn-scroll-left-gabungan"
+                onClick={() => scrollTableHorizontal("left")}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 text-xs font-semibold transition cursor-pointer"
+                title="Geser tabel ke kiri"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 text-amber-400" />
+                <span>Geser Kiri</span>
+              </button>
+              <button
+                type="button"
+                id="btn-scroll-right-gabungan"
+                onClick={() => scrollTableHorizontal("right")}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-slate-800 active:scale-95 text-slate-300 hover:text-amber-300 text-xs font-semibold transition cursor-pointer"
+                title="Geser tabel ke kanan untuk melihat Jasa Parkir & Total"
+              >
+                <span>Geser Kanan</span>
+                <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -446,12 +492,12 @@ export default function DashboardGabungan({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
-            className={`overflow-x-auto overflow-y-auto max-h-[540px] flex-1 min-h-[360px] touch-pan-x select-text custom-table-scrollbar ${
+            className={`overflow-auto flex-1 min-h-[250px] w-full select-text custom-table-scrollbar overscroll-contain ${
               isDragging ? "cursor-grabbing select-none" : "cursor-grab"
             }`}
           >
             <table className="w-full text-xs text-left border-collapse min-w-[1200px]">
-              <thead className="sticky top-0 bg-slate-900 text-amber-300 uppercase font-bold border-b border-slate-800 z-10 select-none shadow-sm">
+              <thead className="sticky top-0 bg-slate-900 text-amber-300 uppercase font-bold border-b border-slate-800 z-20 select-none shadow-sm">
                 <tr>
                   {/* 1. Tanggal Masuk */}
                   <th
@@ -661,7 +707,7 @@ export default function DashboardGabungan({
 
               {/* Sticky Table Footer with Summary Row */}
               {filteredData.length > 0 && (
-                <tfoot className="sticky bottom-0 bg-slate-900 text-slate-100 font-bold border-t-2 border-amber-500/40 shadow-md z-10">
+                <tfoot className="sticky bottom-0 bg-slate-900 text-slate-100 font-bold border-t-2 border-amber-500/40 shadow-md z-20">
                   <tr>
                     <td
                       colSpan={4}

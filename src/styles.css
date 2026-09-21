@@ -154,6 +154,13 @@ body,
   overflow: hidden;
 }
 
+#table-scroll-container,
+#gabungan-table-scroll,
+.custom-table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #090d16;
+}
+
 #table-scroll-container::-webkit-scrollbar,
 #gabungan-table-scroll::-webkit-scrollbar,
 .custom-table-scrollbar::-webkit-scrollbar {

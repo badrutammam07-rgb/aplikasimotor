@@ -914,7 +914,7 @@ export default function DruModal({
     >
       <div
         id="modal-dru-container"
-        className="bg-linear-to-b from-slate-900 via-slate-925 to-slate-950 text-slate-100 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] w-full max-w-6xl max-h-[94vh] flex flex-col border border-amber-500/30 overflow-hidden"
+        className="bg-linear-to-b from-slate-900 via-slate-925 to-slate-950 text-slate-100 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] w-full max-w-6xl h-[94vh] max-h-[94vh] flex flex-col border border-amber-500/30 overflow-hidden"
       >
         {/* Luxury Gold Stripe */}
         <div className="h-1 w-full bg-linear-to-r from-transparent via-amber-400 to-transparent" />
@@ -1041,10 +1041,16 @@ export default function DruModal({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-900/60 min-w-0 w-full">
+        <div
+          className={`flex-1 min-w-0 w-full ${
+            activeTab === "dashboard_gabungan"
+              ? "flex flex-col p-2.5 sm:p-4 bg-slate-900/60 overflow-hidden min-h-0"
+              : "overflow-y-auto p-4 sm:p-6 bg-slate-900/60"
+          }`}
+        >
           {/* TAB 0: DASHBOARD GABUNGAN (Pecel, Mamah, Pribadi - View Only) */}
           {activeTab === "dashboard_gabungan" && (
-            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col min-h-[500px] w-full min-w-0">
+            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col flex-1 min-h-0 w-full shadow-2xl">
               <DashboardGabungan data={motorData} onGoHome={handleExitAndLogout} />
             </div>
           )}
