@@ -178,14 +178,14 @@ body,
 #table-scroll-container::-webkit-scrollbar-thumb,
 #gabungan-table-scroll::-webkit-scrollbar-thumb,
 .custom-table-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #475569;
   border-radius: 9999px;
-  border: 1px solid #475569;
+  border: 1px solid #334155;
 }
 
 #table-scroll-container::-webkit-scrollbar-thumb:hover,
 #gabungan-table-scroll::-webkit-scrollbar-thumb:hover,
 .custom-table-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #d97706;
-  border-color: #f59e0b;
+  background: #f59e0b;
+  border-color: #fbbf24;
 }
